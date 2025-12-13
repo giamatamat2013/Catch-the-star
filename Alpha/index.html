@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>תפוס את הכוכבים</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #1e3c72, #2a5298, #1a237e);
+            font-family: 'Arial', sans-serif;
+            color: white;
+            overflow: hidden;
+        }
+        
+        #gameContainer {
+            position: relative;
+            width: 100%;
+            height: 80vh;
+            border: 3px solid #fff;
+            border-radius: 15px;
+            background: radial-gradient(circle at center, #0f1419, #1a237e);
+            overflow: hidden;
+            cursor: none;
+        }
+        
+        #gameInfo {
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: 18px;
+        }
+        
+        #score {
+            color: #ffeb3b;
+            font-weight: bold;
+        }
+        
+        #lives {
+            color: #f44336;
+            font-weight: bold;
+        }
+        
+        .star {
+            position: absolute;
+            font-size: 30px;
+            cursor: pointer;
+            transition: transform 0.1s;
+            animation: twinkle 1.5s infinite alternate;
+        }
+        
+        .star:hover {
+            transform: scale(1.2);
+        }
+        
+        @keyframes twinkle {
+            0% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+        
+        .bomb {
+            position: absolute;
+            font-size: 25px;
+            cursor: pointer;
+            animation: rotate 2s infinite linear;
+        }
+        
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        
+        #player {
+            position: absolute;
+            font-size: 40px;
+            pointer-events: none;
+            z-index: 10;
+        }
+        
+        #gameOver {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+            border: 2px solid #ffeb3b;
+            display: none;
+        }
+        
+        button {
+            background: #4caf50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+        }
+        
+        button:hover {
+            background: #45a049;
+        }
+        
+        #instructions {
+            text-align: center;
+            margin-bottom: 15px;
+            font-size: 14px;
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body>
+    <div id="instructions">
+        הזז את העכבר כדי לתפוס כוכבים ⭐ (10 נקודות) ותמנע מפצצות 💥 (מאבד חיים)
+    </div>
+    
+    <div id="gameInfo">
+        <span id="score">נקודות: 0</span> | 
+        <span id="lives">חיים: 3</span> | 
+        <span id="level">רמה: 1</span>
+    </div>
+    
+    <div id="gameContainer">
+        <div id="player">🎯</div>
+        <div id="gameOver">
+            <h2>המשחק נגמר!</h2>
+            <p>הניקוד הסופי: <span id="finalScore">0</span></p>
+            <button onclick="restartGame()">שחק שוב</button>
+        </div>
+    </div>
+
+    <script>
+        let score = 0;
+        let lives = 3;
+        let level = 1;
+        let gameRunning = true;
+        let starSpeed = 2;
+        let spawnRate = 0.02;
+        let bombChance = 0.15;
+        
+        const gameContainer = document.getElementById('gameContainer');
+        const player = document.getElementById('player');
+        const scoreElement = document.getElementById('score');
+        const livesElement = document.getElementById('lives');
+        const levelElement = document.getElementById('level');
+        const gameOverDiv = document.getElementById('gameOver');
+        const finalScoreElement = document.getElementById('finalScore');
+        
+        let mouseX = gameContainer.clientWidth / 2;
+        let mouseY = gameContainer.clientHeight / 2;
+        
+        // עדכון מיקום השחקן
+        gameContainer.addEventListener('mousemove', (e) => {
+            const rect = gameContainer.getBoundingClientRect();
+            mouseX = e.clientX - rect.left;
+            mouseY = e.clientY - rect.top;
+            player.style.left = (mouseX - 20) + 'px';
+            player.style.top = (mouseY - 20) + 'px';
+        });
+        
+        // יצירת כוכבים ופצצות
+        function createFallingObject() {
+            if (!gameRunning) return;
+            
+            const isBomb = Math.random() < bombChance;
+            const object = document.createElement('div');
+            
+            if (isBomb) {
+                object.className = 'bomb';
+                object.textContent = '💥';
+            } else {
+                object.className = 'star';
+                object.textContent = ['⭐', '✨', '🌟'][Math.floor(Math.random() * 3)];
+            }
+            
+            object.style.left = Math.random() * (gameContainer.clientWidth - 30) + 'px';
+            object.style.top = '-30px';
+            
+            gameContainer.appendChild(object);
+            
+            // אנימציה של נפילה
+            function fall() {
+                if (!gameRunning) {
+                    object.remove();
+                    return;
+                }
+                
+                const currentTop = parseInt(object.style.top);
+                object.style.top = (currentTop + starSpeed) + 'px';
+                
+                // בדיקת התנגשות עם השחקן
+                const objectRect = object.getBoundingClientRect();
+                const playerRect = player.getBoundingClientRect();
+                
+                if (objectRect.left < playerRect.right &&
+                    objectRect.right > playerRect.left &&
+                    objectRect.top < playerRect.bottom &&
+                    objectRect.bottom > playerRect.top) {
+                    
+                    if (isBomb) {
+                        lives--;
+                        updateLives();
+                        object.remove();
+                        if (lives <= 0) {
+                            endGame();
+                        }
+                        return;
+                    } else {
+                        score += 10;
+                        updateScore();
+                        object.remove();
+                        
+                        // העלאת רמה כל 100 נקודות
+                        if (score % 100 === 0) {
+                            levelUp();
+                        }
+                        return;
+                    }
+                }
+                
+                // הסרת האובייקט אם הוא יצא מהמסך
+                if (currentTop > gameContainer.clientHeight) {
+                    object.remove();
+                    return;
+                }
+                
+                requestAnimationFrame(fall);
+            }
+            
+            requestAnimationFrame(fall);
+        }
+        
+        function updateScore() {
+            scoreElement.textContent = `נקודות: ${score}`;
+        }
+        
+        function updateLives() {
+            livesElement.textContent = `חיים: ${lives}`;
+        }
+        
+        function levelUp() {
+            level++;
+            starSpeed += 0.5;
+            spawnRate += 0.005;
+            bombChance = Math.min(bombChance + 0.02, 0.3);
+            levelElement.textContent = `רמה: ${level}`;
+        }
+        
+        function endGame() {
+            gameRunning = false;
+            finalScoreElement.textContent = score;
+            gameOverDiv.style.display = 'block';
+        }
+        
+        function restartGame() {
+            score = 0;
+            lives = 3;
+            level = 1;
+            starSpeed = 2;
+            spawnRate = 0.02;
+            bombChance = 0.15;
+            gameRunning = true;
+            
+            updateScore();
+            updateLives();
+            levelElement.textContent = `רמה: ${level}`;
+            gameOverDiv.style.display = 'none';
+            
+            // ניקוי כל האובייקטים
+            const objects = gameContainer.querySelectorAll('.star, .bomb');
+            objects.forEach(obj => obj.remove());
+            
+            gameLoop();
+        }
+        
+        function gameLoop() {
+            if (!gameRunning) return;
+            
+            if (Math.random() < spawnRate) {
+                createFallingObject();
+            }
+            
+            setTimeout(() => requestAnimationFrame(gameLoop), 16);
+        }
+        
+        // התחלת המשחק
+        player.style.left = (mouseX - 20) + 'px';
+        player.style.top = (mouseY - 20) + 'px';
+        gameLoop();
+    </script>
+</body>
+</html>
