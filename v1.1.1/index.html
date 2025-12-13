@@ -1,0 +1,1150 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>תפוס את הכוכבים - 20 שלבים</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 5px;
+            background: linear-gradient(135deg, #1e3c72, #2a5298, #1a237e);
+            font-family: Arial, sans-serif;
+            color: white;
+            overflow: hidden;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            box-sizing: border-box;
+        }
+        
+        #gameContainer {
+            position: relative;
+            width: 100%;
+            height: calc(100vh - 180px);
+            min-height: 300px;
+            max-height: 600px;
+            border: 2px solid #fff;
+            border-radius: 10px;
+            background: radial-gradient(circle at center, #0f1419, #1a237e);
+            overflow: hidden;
+            cursor: crosshair;
+            flex-grow: 1;
+        }
+        
+        #gameInfo {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+            font-size: clamp(10px, 2vw, 12px);
+            background: rgba(0,0,0,0.3);
+            padding: clamp(4px, 1vw, 8px);
+            border-radius: 8px;
+            flex-wrap: wrap;
+            gap: 5px;
+        }
+        
+        .info-section {
+            text-align: center;
+            flex: 1;
+            min-width: 80px;
+        }
+        
+        #globalLevel {
+            background: linear-gradient(45deg, #ff6b35, #f7931e);
+            color: white;
+            padding: clamp(4px, 1.5vw, 8px) clamp(8px, 3vw, 15px);
+            border-radius: 15px;
+            font-weight: bold;
+            font-size: clamp(12px, 2.5vw, 16px);
+            text-align: center;
+            margin-bottom: 5px;
+            border: 2px solid #fff;
+            box-shadow: 0 0 10px rgba(255,107,53,0.5);
+        }
+        
+        #stageInfo {
+            text-align: center;
+            background: rgba(0,0,0,0.5);
+            padding: clamp(5px, 1.5vw, 10px);
+            margin-bottom: 5px;
+            border-radius: 8px;
+            border: 2px solid #4caf50;
+        }
+        
+        #legend {
+            display: flex;
+            justify-content: center;
+            gap: clamp(4px, 1.5vw, 8px);
+            margin-bottom: 5px;
+            font-size: clamp(8px, 1.2vw, 10px);
+            opacity: 0.9;
+            flex-wrap: wrap;
+            background: rgba(0,0,0,0.3);
+            padding: clamp(3px, 1vw, 6px);
+            border-radius: 6px;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 2px;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: clamp(15px, 2.5vw, 18px);
+            background: rgba(0,0,0,0.3);
+            border-radius: 9px;
+            margin: 8px 0;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4caf50, #8bc34a);
+            border-radius: 9px;
+            transition: width 0.3s ease;
+            position: relative;
+        }
+        
+        .progress-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: clamp(9px, 1.5vw, 11px);
+            font-weight: bold;
+            color: white;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+        }
+        
+        .star {
+            position: absolute;
+            font-size: clamp(20px, 3.5vw, 25px);
+            cursor: pointer;
+            transition: transform 0.1s;
+            animation: twinkle 1.5s infinite alternate;
+        }
+        
+        .star-regular { color: #ffeb3b; }
+        .star-blue { color: #4169e1; font-size: clamp(18px, 3.2vw, 23px); }
+        .star-silver { color: #c0c0c0; font-size: clamp(22px, 3.8vw, 27px); }
+        .star-gold { color: #ffd700; font-size: clamp(25px, 4.2vw, 30px); }
+        .star-rainbow { 
+            font-size: clamp(28px, 4.8vw, 35px); 
+            animation: rainbow 2s infinite linear, twinkle 1.5s infinite alternate; 
+        }
+        
+        .bomb, .blackhole, .lightning {
+            position: absolute;
+            cursor: pointer;
+        }
+        
+        .bomb {
+            font-size: clamp(18px, 3vw, 22px);
+            animation: rotate 2s infinite linear;
+        }
+        
+        .blackhole {
+            font-size: clamp(20px, 3.5vw, 25px);
+            animation: blackholeRotate 3s infinite ease-in-out, blackholePulse 1.5s infinite alternate;
+        }
+        
+        .lightning {
+            font-size: clamp(16px, 2.8vw, 20px);
+            animation: lightningZigzag 2s infinite linear, lightningGlow 0.5s infinite alternate;
+        }
+        
+        .powerup {
+            position: absolute;
+            font-size: clamp(22px, 3.8vw, 28px);
+            cursor: pointer;
+            animation: pulse 1s infinite alternate;
+        }
+        
+        #player {
+            position: absolute;
+            font-size: clamp(25px, 4.5vw, 35px);
+            pointer-events: none;
+            z-index: 10;
+        }
+        
+        .player-shield {
+            box-shadow: 0 0 15px #2196f3;
+            animation: shieldGlow 1s infinite alternate;
+        }
+        
+        #gameOver, #stageComplete, #levelComplete {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.95);
+            padding: 0;
+            border-radius: 12px;
+            text-align: center;
+            border: 2px solid #ffeb3b;
+            display: none;
+            z-index: 1000;
+            max-height: 90vh;
+            max-width: 95vw;
+            min-width: 280px;
+            font-size: clamp(11px, 2vw, 14px);
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .popup-content {
+            padding: clamp(15px, 4vw, 25px);
+            overflow-y: auto;
+            flex-grow: 1;
+            max-height: calc(90vh - 80px);
+        }
+        
+        .popup-buttons {
+            padding: clamp(10px, 3vw, 20px);
+            border-top: 1px solid rgba(255,255,255,0.2);
+            background: rgba(0,0,0,0.3);
+            border-radius: 0 0 10px 10px;
+            flex-shrink: 0;
+        }
+        
+        #stageComplete { border-color: #4caf50; }
+        #levelComplete { border-color: #ff6b35; }
+        
+        button {
+            background: #4caf50;
+            color: white;
+            border: none;
+            padding: clamp(8px, 2vw, 12px) clamp(12px, 3vw, 20px);
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: clamp(11px, 2vw, 14px);
+            margin: clamp(3px, 1vw, 6px);
+            transition: background 0.3s;
+            min-height: 36px;
+            box-sizing: border-box;
+        }
+        
+        button:hover { background: #45a049; }
+        
+        .retry-btn { background: #ff9800; }
+        .retry-btn:hover { background: #f57c00; }
+        
+        .mega-btn {
+            background: linear-gradient(45deg, #ff6b35, #f7931e);
+            font-weight: bold;
+        }
+        
+        .points-text, .combo-text {
+            position: absolute;
+            font-weight: bold;
+            font-size: clamp(12px, 2.5vw, 16px);
+            pointer-events: none;
+            animation: floatUp 1s ease-out forwards;
+            z-index: 50;
+        }
+        
+        .combo-text { color: #4caf50; font-size: clamp(14px, 3vw, 18px); }
+        .points-text { color: #ffeb3b; }
+        
+        @keyframes rainbow {
+            0% { filter: hue-rotate(0deg); }
+            100% { filter: hue-rotate(360deg); }
+        }
+        
+        @keyframes twinkle {
+            0% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+        
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            100% { transform: scale(1.1); }
+        }
+        
+        @keyframes blackholeRotate {
+            0% { transform: rotate(0deg) scale(1); }
+            50% { transform: rotate(180deg) scale(1.1); }
+            100% { transform: rotate(360deg) scale(1); }
+        }
+        
+        @keyframes blackholePulse {
+            0% { filter: brightness(0.8) hue-rotate(0deg); }
+            100% { filter: brightness(1.2) hue-rotate(20deg); }
+        }
+        
+        @keyframes lightningZigzag {
+            0% { transform: translateX(0) rotate(0deg); }
+            25% { transform: translateX(3px) rotate(5deg); }
+            50% { transform: translateX(-3px) rotate(-5deg); }
+            75% { transform: translateX(2px) rotate(3deg); }
+            100% { transform: translateX(0) rotate(0deg); }
+        }
+        
+        @keyframes lightningGlow {
+            0% { filter: brightness(1) drop-shadow(0 0 5px #ff5722); }
+            100% { filter: brightness(1.3) drop-shadow(0 0 10px #ff9800); }
+        }
+        
+        @keyframes shieldGlow {
+            0% { box-shadow: 0 0 20px #2196f3; }
+            100% { box-shadow: 0 0 30px #64b5f6; }
+        }
+        
+        @keyframes floatUp {
+            0% { opacity: 1; transform: translateY(0); }
+            100% { opacity: 0; transform: translateY(-40px); }
+        }
+        
+        @media (max-width: 768px) {
+            body { 
+                padding: 3px; 
+            }
+            
+            #gameContainer {
+                height: calc(100vh - 140px);
+                border-width: 1px;
+                min-height: 250px;
+            }
+            
+            .info-section {
+                min-width: 70px;
+                font-size: 9px;
+            }
+            
+            #gameInfo {
+                flex-direction: row;
+                gap: 3px;
+                padding: 4px;
+            }
+            
+            #globalLevel {
+                font-size: 12px;
+                padding: 4px 8px;
+            }
+            
+            #stageInfo {
+                padding: 6px;
+            }
+            
+            #legend {
+                gap: 3px;
+                font-size: 8px;
+                padding: 4px;
+            }
+            
+            button {
+                font-size: 11px;
+                padding: 6px 10px;
+                margin: 3px;
+                min-height: 32px;
+            }
+            
+            #gameOver, #stageComplete, #levelComplete {
+                padding: 10px;
+                font-size: 10px;
+                max-width: 98vw;
+                margin: 1vw;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            #gameContainer {
+                height: calc(100vh - 120px);
+                min-height: 200px;
+            }
+            
+            #gameInfo .info-section {
+                min-width: 60px;
+                font-size: 8px;
+            }
+            
+            #legend {
+                font-size: 7px;
+                gap: 2px;
+            }
+            
+            .legend-item {
+                margin: 1px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="globalLevel">רמה גלובלית: 1 (מכפיל נקודות: x1)</div>
+    
+    <div id="legend">
+        <div class="legend-item">⭐ רגיל (5×רמה)</div>
+        <div class="legend-item">🌟 כחול (10×רמה)</div>
+        <div class="legend-item">💫 כסף (20×רמה)</div>
+        <div class="legend-item">🌠 זהב (50×רמה)</div>
+        <div class="legend-item">🎆 קשת (100×רמה)</div>
+        <div class="legend-item">🛡️ מגן</div>
+        <div class="legend-item">❤️ חיים</div>
+        <div class="legend-item">⚡ מהירות</div>
+        <div class="legend-item" id="freezeLegend" style="opacity: 0.5;">❄️ הקפאה (רמה 2+)</div>
+        <div class="legend-item" id="magnetLegend" style="opacity: 0.5;">🧲 מגנט (רמה 3+)</div>
+        <div class="legend-item" id="doubleLegend" style="opacity: 0.5;">💎 כפול (רמה 4+)</div>
+        <div class="legend-item" style="color: #f44336;">💥 פצצה</div>
+        <div class="legend-item" style="color: #9c27b0;">🕳️ חור שחור</div>
+        <div class="legend-item" style="color: #ff5722;">🌩️ זיק</div>
+    </div>
+    
+    <div id="stageInfo">
+        <div id="stageTitle">שלב 1: התחלה</div>
+        <div id="stageGoal">יעד: 100 נקודות</div>
+        <div class="progress-bar">
+            <div class="progress-fill" id="progressFill" style="width: 0%">
+                <div class="progress-text" id="progressText">0 / 100</div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="gameInfo">
+        <div class="info-section">
+            <div>נקודות: <span id="score">0</span></div>
+            <div>קומבו: <span id="combo">x1</span></div>
+        </div>
+        <div class="info-section">
+            <div>חיים: <span id="lives">3</span></div>
+            <div>שלב: <span id="stageNum">1</span>/20</div>
+        </div>
+        <div class="info-section">
+            <div>מגן: <span id="shield">0</span></div>
+            <div>מיוחד: <span id="special">אין</span></div>
+        </div>
+    </div>
+    
+    <div id="gameContainer">
+        <div id="player">🎯</div>
+        
+        <div id="gameOver" style="display: none;">
+            <div class="popup-content">
+                <h2>נכשלת בשלב!</h2>
+                <p>ניקוד: <span id="failScore">0</span> מתוך <span id="failTarget">0</span></p>
+            </div>
+            <div class="popup-buttons">
+                <button class="retry-btn" onclick="retryStage()">נסה שוב</button>
+                <button onclick="restartGame()">התחל מחדש</button>
+            </div>
+        </div>
+        
+        <div id="stageComplete" style="display: none;">
+            <div class="popup-content">
+                <h2>🎉 כל הכבוד! עברת את השלב! 🎉</h2>
+                <p>שלב <span id="completedStage">1</span> - <span id="completedStageName">התחלה</span> הושלם!</p>
+                
+                <div style="background: rgba(76,175,80,0.2); padding: 15px; border-radius: 10px; margin: 15px 0;">
+                    <h3>📊 סטטיסטיקות השלב:</h3>
+                    <p>🎯 ניקוד השלב: <span id="stageScore">0</span> נקודות</p>
+                    <p>⏱️ זמן השלב: <span id="stageTime">0</span> שניות</p>
+                    <p>🔥 קומבו מקסימלי: <span id="stageMaxCombo">1</span></p>
+                    <p>⭐ כוכבים שנתפסו: <span id="starsCaught">0</span></p>
+                    <p>💥 פצצות שנמנעו: <span id="bombsAvoided">0</span></p>
+                    <p>🕳️ חורים שחורים שנמנעו: <span id="blackholesAvoided">0</span></p>
+                    <p>🌩️ ברקים שנמנעו: <span id="lightningAvoided">0</span></p>
+                </div>
+                
+                <div style="background: rgba(255,152,0,0.2); padding: 15px; border-radius: 10px; margin: 15px 0;">
+                    <h3>📈 התקדמות ברמה הגלובלית:</h3>
+                    <p>📊 סה"כ נקודות ברמה: <span id="levelScore">0</span></p>
+                    <p>🎮 שלבים שהושלמו: <span id="completedStages">0</span>/20</p>
+                    <div style="width: 100%; background: rgba(0,0,0,0.3); border-radius: 10px; height: 20px; margin: 10px 0;">
+                        <div id="levelProgressFill" style="height: 100%; background: linear-gradient(90deg, #ff9800, #ffc107); border-radius: 10px; transition: width 0.3s; position: relative;">
+                            <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 12px; font-weight: bold; color: white; text-shadow: 1px 1px 2px rgba(0,0,0,0.8);" id="levelProgressText"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="popup-buttons">
+                <div style="display: flex; gap: clamp(5px, 2vw, 10px); justify-content: center; flex-wrap: wrap;">
+                    <button onclick="nextStage()" style="background: linear-gradient(45deg, #4caf50, #8bc34a); font-size: clamp(12px, 2.5vw, 16px); padding: clamp(10px, 2.5vw, 15px) clamp(15px, 4vw, 25px); flex: 1; min-width: 120px; max-width: 200px;">
+                        <span id="nextStageText">שלב הבא →</span>
+                    </button>
+                    <button onclick="retryStage()" class="retry-btn" style="flex: 1; min-width: 120px; max-width: 180px;">נסה שלב זה שוב</button>
+                </div>
+            </div>
+        </div>
+        
+        <div id="levelComplete" style="display: none;">
+            <div class="popup-content">
+                <h2>🎉 מזל טוב! עליתי רמה גלובלית! 🎉</h2>
+                <p>סיימת רמה <span id="completedLevel">1</span>!</p>
+                <p>עליתי לרמה <span id="newLevel">2</span>!</p>
+                <p>מכפיל חדש: x<span id="newMultiplier">2</span></p>
+                <p>פאוור-אפים חדשים נפתחו!</p>
+            </div>
+            <div class="popup-buttons">
+                <button class="mega-btn" onclick="nextLevel()">התחל רמה חדשה!</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let globalLevel = 1;
+        let currentStage = 1;
+        let score = 0;
+        let levelScore = 0;
+        let lives = 3;
+        let gameRunning = false;
+        let starSpeed = 2;
+        let spawnRate = 0.025;
+        let bombChance = 0.1;
+        let combo = 1;
+        let comboCount = 0;
+        let maxCombo = 1;
+        let shieldTime = 0;
+        let speedBoostTime = 0;
+        let freezeTime = 0;
+        let magnetTime = 0;
+        let doublePointsTime = 0;
+        let lastStarType = null;
+        let stageStartTime = Date.now();
+        let levelStartTime = Date.now();
+        let starsCaught = 0;
+        let bombsAvoided = 0;
+        let blackholesAvoided = 0;
+        let lightningAvoided = 0;
+        let levelStarsCaught = 0;
+        
+        const baseStageTargets = [
+            100, 150, 200, 280, 370, 480, 600, 750, 920, 1120,
+            1350, 1620, 1930, 2280, 2670, 3100, 3570, 4080, 4630, 5220
+        ];
+        
+        const stageNames = [
+            "התחלה", "צעדים ראשונים", "מתרגל", "מבין", "מתמיד", 
+            "מתחמם", "מתקדם", "מאתגר", "קשה", "מורכב",
+            "מקצועי", "מומחה", "אמן", "וירטואוז", "גאון",
+            "מדהים", "אגדי", "בלתי יתואר", "על אנושי", "מושלם"
+        ];
+        
+        const baseStarTypes = [
+            { emoji: '⭐', basePoints: 5, chance: 0.4, class: 'star-regular' },
+            { emoji: '🌟', basePoints: 10, chance: 0.3, class: 'star-blue' },
+            { emoji: '💫', basePoints: 20, chance: 0.15, class: 'star-silver' },
+            { emoji: '🌠', basePoints: 50, chance: 0.08, class: 'star-gold' },
+            { emoji: '🎆', basePoints: 100, chance: 0.02, class: 'star-rainbow' }
+        ];
+        
+        const powerupTypes = [
+            { emoji: '🛡️', type: 'shield', chance: 0.04 },
+            { emoji: '❤️', type: 'life', chance: 0.03 },
+            { emoji: '⚡', type: 'speed', chance: 0.04 },
+            { emoji: '❄️', type: 'freeze', chance: 0.02 },
+            { emoji: '🧲', type: 'magnet', chance: 0.02 },
+            { emoji: '💎', type: 'double', chance: 0.02 }
+        ];
+        
+        const gameContainer = document.getElementById('gameContainer');
+        const player = document.getElementById('player');
+        
+        let mouseX = 0;
+        let mouseY = 0;
+        
+        // עדכון מיקום השחקן
+        function updatePlayerPosition(clientX, clientY) {
+            if (!gameRunning) return;
+            const rect = gameContainer.getBoundingClientRect();
+            mouseX = clientX - rect.left;
+            mouseY = clientY - rect.top;
+            
+            // ודא שהשחקן נשאר בגבולות
+            mouseX = Math.max(20, Math.min(rect.width - 20, mouseX));
+            mouseY = Math.max(20, Math.min(rect.height - 20, mouseY));
+            
+            player.style.left = (mouseX - 20) + 'px';
+            player.style.top = (mouseY - 20) + 'px';
+        }
+        
+        gameContainer.addEventListener('mousemove', (e) => {
+            updatePlayerPosition(e.clientX, e.clientY);
+        });
+        
+        gameContainer.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            if (e.touches.length > 0) {
+                updatePlayerPosition(e.touches[0].clientX, e.touches[0].clientY);
+            }
+        });
+        
+        gameContainer.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            if (e.touches.length > 0) {
+                updatePlayerPosition(e.touches[0].clientX, e.touches[0].clientY);
+            }
+        });
+        
+        function getStarTypes() {
+            return baseStarTypes.map(star => ({
+                ...star,
+                points: Math.floor(star.basePoints * globalLevel * (doublePointsTime > 0 ? 2 : 1))
+            }));
+        }
+        
+        function getRandomStarType() {
+            const starTypes = getStarTypes();
+            const random = Math.random();
+            let cumulative = 0;
+            for (let type of starTypes) {
+                cumulative += type.chance;
+                if (random < cumulative) return type;
+            }
+            return starTypes[0];
+        }
+        
+        function getRandomPowerup() {
+            const availablePowerups = powerupTypes.filter(p => 
+                globalLevel >= Math.ceil(powerupTypes.indexOf(p) / 2)
+            );
+            
+            const random = Math.random();
+            let cumulative = 0;
+            for (let powerup of availablePowerups) {
+                cumulative += powerup.chance;
+                if (random < cumulative) return powerup;
+            }
+            return null;
+        }
+        
+        function showFloatingText(x, y, text, className) {
+            const element = document.createElement('div');
+            element.className = className;
+            element.textContent = text;
+            element.style.left = x + 'px';
+            element.style.top = y + 'px';
+            gameContainer.appendChild(element);
+            
+            setTimeout(() => {
+                if (element.parentNode) {
+                    element.remove();
+                }
+            }, 1000);
+        }
+        
+        function createFallingObject() {
+            if (!gameRunning) return;
+            
+            const random = Math.random();
+            const object = document.createElement('div');
+            let objectType = 'star';
+            
+            const totalThreatChance = bombChance * 1.5;
+            const bombChanceActual = bombChance * 0.6;
+            const blackholeChance = bombChance * 0.25;
+            const lightningChance = bombChance * 0.15;
+            
+            if (random < totalThreatChance) {
+                const threatRandom = Math.random();
+                
+                if (threatRandom < (bombChanceActual / totalThreatChance)) {
+                    objectType = 'bomb';
+                    object.className = 'bomb';
+                    object.textContent = '💥';
+                } else if (threatRandom < ((bombChanceActual + blackholeChance) / totalThreatChance)) {
+                    objectType = 'blackhole';
+                    object.className = 'blackhole';
+                    object.textContent = '🕳️';
+                    object.dataset.pullRadius = '80';
+                } else {
+                    objectType = 'lightning';
+                    object.className = 'lightning';
+                    object.textContent = '🌩️';
+                    object.dataset.speed = Math.random() > 0.5 ? 'fast' : 'normal';
+                }
+            } else {
+                const powerupMultiplier = Math.min(globalLevel, 3);
+                const powerupCheck = Math.random();
+                const powerup = getRandomPowerup();
+                
+                if (powerup && powerupCheck < (0.08 * powerupMultiplier)) {
+                    objectType = 'powerup';
+                    object.className = 'powerup';
+                    object.textContent = powerup.emoji;
+                    object.dataset.powerupType = powerup.type;
+                } else {
+                    const starType = getRandomStarType();
+                    object.className = `star ${starType.class}`;
+                    object.textContent = starType.emoji;
+                    object.dataset.points = starType.points;
+                    object.dataset.starType = starType.emoji;
+                }
+            }
+            
+            const containerRect = gameContainer.getBoundingClientRect();
+            object.style.left = Math.random() * (containerRect.width - 40) + 'px';
+            object.style.top = '-40px';
+            
+            gameContainer.appendChild(object);
+            
+            if (magnetTime > 0 && objectType === 'star') {
+                object.dataset.magnetic = 'true';
+            }
+            
+            function fall() {
+                if (!gameRunning || !object.parentNode) {
+                    if (object.parentNode) object.remove();
+                    return;
+                }
+                
+                const currentTop = parseInt(object.style.top) || 0;
+                let fallSpeed = speedBoostTime > 0 ? starSpeed * 0.6 : starSpeed;
+                
+                if (freezeTime > 0) {
+                    fallSpeed *= 0.3;
+                }
+                
+                if (objectType === 'lightning' && object.dataset.speed === 'fast') {
+                    fallSpeed *= 1.5;
+                }
+                
+                // חור שחור משוך כוכבים ושחקן
+                if (objectType === 'blackhole') {
+                    const pullRadius = parseInt(object.dataset.pullRadius) || 80;
+                    const blackholeX = parseInt(object.style.left) + 15;
+                    const blackholeY = parseInt(object.style.top) + 15;
+                    
+                    const playerDistance = Math.sqrt(Math.pow(mouseX - blackholeX, 2) + Math.pow(mouseY - blackholeY, 2));
+                    if (playerDistance < pullRadius) {
+                        const pullStrength = (pullRadius - playerDistance) / pullRadius * 0.8;
+                        const pullX = (blackholeX - mouseX) * pullStrength;
+                        const pullY = (blackholeY - mouseY) * pullStrength;
+                        
+                        mouseX += pullX;
+                        mouseY += pullY;
+                        
+                        const containerRect = gameContainer.getBoundingClientRect();
+                        mouseX = Math.max(20, Math.min(containerRect.width - 20, mouseX));
+                        mouseY = Math.max(20, Math.min(containerRect.height - 20, mouseY));
+                        
+                        player.style.left = (mouseX - 20) + 'px';
+                        player.style.top = (mouseY - 20) + 'px';
+                    }
+                }
+                
+                if (object.dataset.magnetic === 'true') {
+                    const currentLeft = parseInt(object.style.left) || 0;
+                    const diff = mouseX - currentLeft;
+                    object.style.left = (currentLeft + (diff * 0.03)) + 'px';
+                }
+                
+                object.style.top = (currentTop + fallSpeed) + 'px';
+                
+                // בדיקת התנגשות
+                const objectRect = object.getBoundingClientRect();
+                const playerRect = player.getBoundingClientRect();
+                
+                if (objectRect.left < playerRect.right &&
+                    objectRect.right > playerRect.left &&
+                    objectRect.top < playerRect.bottom &&
+                    objectRect.bottom > playerRect.top) {
+                    
+                    handleCollision(object, objectType);
+                    return;
+                }
+                
+                const containerRect = gameContainer.getBoundingClientRect();
+                if (currentTop > containerRect.height) {
+                    object.remove();
+                    if (objectType === 'star') {
+                        resetCombo();
+                    }
+                    return;
+                }
+                
+                requestAnimationFrame(fall);
+            }
+            
+            requestAnimationFrame(fall);
+        }
+        
+        function handleCollision(object, objectType) {
+            const rect = object.getBoundingClientRect();
+            const gameRect = gameContainer.getBoundingClientRect();
+            const x = rect.left - gameRect.left;
+            const y = rect.top - gameRect.top;
+            
+            if (objectType === 'bomb') {
+                if (shieldTime > 0) {
+                    bombsAvoided++;
+                    showFloatingText(x, y, 'חסום!', 'combo-text');
+                } else {
+                    lives--;
+                    updateLives();
+                    showFloatingText(x, y, 'בום!', 'points-text');
+                    resetCombo();
+                    if (lives <= 0) {
+                        endStage(false);
+                    }
+                }
+            } else if (objectType === 'blackhole') {
+                if (shieldTime > 0) {
+                    blackholesAvoided++;
+                    showFloatingText(x, y, 'מגן מחור!', 'combo-text');
+                } else {
+                    lives -= 2;
+                    updateLives();
+                    showFloatingText(x, y, 'נבלע!', 'points-text');
+                    resetCombo();
+                    speedBoostTime = 0;
+                    freezeTime = 0;
+                    magnetTime = 0;
+                    doublePointsTime = 0;
+                    if (lives <= 0) {
+                        endStage(false);
+                    }
+                }
+            } else if (objectType === 'lightning') {
+                if (shieldTime > 0) {
+                    lightningAvoided++;
+                    showFloatingText(x, y, 'הגנה!', 'combo-text');
+                } else {
+                    speedBoostTime = 0;
+                    freezeTime = 0;
+                    const containerRect = gameContainer.getBoundingClientRect();
+                    const newX = Math.random() * (containerRect.width - 40) + 20;
+                    const newY = Math.random() * (containerRect.height - 40) + 20;
+                    mouseX = newX;
+                    mouseY = newY;
+                    player.style.left = (mouseX - 20) + 'px';
+                    player.style.top = (mouseY - 20) + 'px';
+                    showFloatingText(x, y, 'זעזוע!', 'points-text');
+                    resetCombo();
+                }
+            } else if (objectType === 'powerup') {
+                handlePowerup(object.dataset.powerupType, x, y);
+            } else if (objectType === 'star') {
+                starsCaught++;
+                levelStarsCaught++;
+                let points = parseInt(object.dataset.points) * combo;
+                
+                score += points;
+                levelScore += points;
+                updateScore();
+                updateProgress();
+                
+                const target = Math.floor(baseStageTargets[currentStage - 1] * globalLevel);
+                if (score >= target) {
+                    endStage(true);
+                    return;
+                }
+                
+                if (lastStarType === object.dataset.starType) {
+                    comboCount++;
+                    if (comboCount >= 2) {
+                        combo = Math.min(combo + 1, 5);
+                        maxCombo = Math.max(maxCombo, combo);
+                        updateCombo();
+                        showFloatingText(x, y, `קומבו x${combo}!`, 'combo-text');
+                    }
+                } else {
+                    comboCount = 1;
+                    combo = Math.max(combo - 1, 1);
+                    updateCombo();
+                }
+                
+                lastStarType = object.dataset.starType;
+                showFloatingText(x, y, `+${points}`, 'points-text');
+            }
+            
+            object.remove();
+        }
+        
+        function handlePowerup(type, x, y) {
+            switch(type) {
+                case 'shield':
+                    shieldTime = 300;
+                    player.classList.add('player-shield');
+                    showFloatingText(x, y, 'מגן!', 'combo-text');
+                    break;
+                case 'life':
+                    lives = Math.min(lives + 1, 5);
+                    updateLives();
+                    showFloatingText(x, y, 'חיים!', 'combo-text');
+                    break;
+                case 'speed':
+                    speedBoostTime = 300;
+                    showFloatingText(x, y, 'מהירות!', 'combo-text');
+                    break;
+                case 'freeze':
+                    freezeTime = 240;
+                    showFloatingText(x, y, 'הקפאה!', 'combo-text');
+                    break;
+                case 'magnet':
+                    magnetTime = 240;
+                    showFloatingText(x, y, 'מגנט!', 'combo-text');
+                    break;
+                case 'double':
+                    doublePointsTime = 180;
+                    showFloatingText(x, y, 'נקודות x2!', 'combo-text');
+                    break;
+            }
+        }
+        
+        function resetCombo() {
+            combo = 1;
+            comboCount = 0;
+            lastStarType = null;
+            updateCombo();
+        }
+        
+        function updateScore() {
+            document.getElementById('score').textContent = score;
+        }
+        
+        function updateLives() {
+            document.getElementById('lives').textContent = lives;
+        }
+        
+        function updateCombo() {
+            document.getElementById('combo').textContent = 'x' + combo;
+            document.getElementById('combo').style.color = combo > 1 ? '#4caf50' : '#fff';
+        }
+        
+        function updateStageInfo() {
+            const target = Math.floor(baseStageTargets[currentStage - 1] * globalLevel);
+            const stageName = stageNames[currentStage - 1];
+            document.getElementById('stageTitle').textContent = `שלב ${currentStage}: ${stageName}`;
+            document.getElementById('stageGoal').textContent = `יעד: ${target} נקודות`;
+            document.getElementById('stageNum').textContent = currentStage;
+            updateProgress();
+        }
+        
+        function updateProgress() {
+            const target = Math.floor(baseStageTargets[currentStage - 1] * globalLevel);
+            const progress = Math.min((score / target) * 100, 100);
+            document.getElementById('progressFill').style.width = progress + '%';
+            document.getElementById('progressText').textContent = `${score} / ${target}`;
+        }
+        
+        function updateGlobalLevel() {
+            document.getElementById('globalLevel').textContent = 
+                `רמה גלובלית: ${globalLevel} (מכפיל נקודות: x${globalLevel})`;
+        }
+        
+        function updateLegend() {
+            const freezeLegend = document.getElementById('freezeLegend');
+            const magnetLegend = document.getElementById('magnetLegend');
+            const doubleLegend = document.getElementById('doubleLegend');
+            
+            if (freezeLegend && globalLevel >= 2) {
+                freezeLegend.style.opacity = '1';
+                freezeLegend.style.color = '#00bcd4';
+            }
+            
+            if (magnetLegend && globalLevel >= 3) {
+                magnetLegend.style.opacity = '1';
+                magnetLegend.style.color = '#9c27b0';
+            }
+            
+            if (doubleLegend && globalLevel >= 4) {
+                doubleLegend.style.opacity = '1';
+                doubleLegend.style.color = '#e91e63';
+            }
+        }
+        
+        function updateSpecialEffects() {
+            let special = 'אין';
+            
+            if (doublePointsTime > 0) {
+                special = `כפול: ${Math.ceil(doublePointsTime/60)}`;
+                document.getElementById('special').style.color = '#e91e63';
+            } else if (magnetTime > 0) {
+                special = `מגנט: ${Math.ceil(magnetTime/60)}`;
+                document.getElementById('special').style.color = '#9c27b0';
+            } else if (freezeTime > 0) {
+                special = `הקפאה: ${Math.ceil(freezeTime/60)}`;
+                document.getElementById('special').style.color = '#00bcd4';
+            } else if (speedBoostTime > 0) {
+                special = `מהירות: ${Math.ceil(speedBoostTime/60)}`;
+                document.getElementById('special').style.color = '#ff9800';
+            } else {
+                document.getElementById('special').style.color = '#666';
+            }
+            
+            document.getElementById('special').textContent = special;
+            
+            if (shieldTime > 0) {
+                document.getElementById('shield').textContent = Math.ceil(shieldTime/60);
+                document.getElementById('shield').style.color = '#2196f3';
+            } else {
+                document.getElementById('shield').textContent = '0';
+                document.getElementById('shield').style.color = '#666';
+                player.classList.remove('player-shield');
+            }
+        }
+        
+        function endStage(completed) {
+            gameRunning = false;
+            
+            if (completed) {
+                const stageTime = Math.floor((Date.now() - stageStartTime) / 1000);
+                const stageName = stageNames[currentStage - 1];
+                
+                document.getElementById('completedStage').textContent = currentStage;
+                document.getElementById('completedStageName').textContent = stageName;
+                document.getElementById('stageScore').textContent = score;
+                document.getElementById('stageTime').textContent = stageTime;
+                document.getElementById('stageMaxCombo').textContent = maxCombo;
+                document.getElementById('starsCaught').textContent = starsCaught;
+                document.getElementById('bombsAvoided').textContent = bombsAvoided;
+                document.getElementById('blackholesAvoided').textContent = blackholesAvoided;
+                document.getElementById('lightningAvoided').textContent = lightningAvoided;
+                document.getElementById('levelScore').textContent = levelScore;
+                document.getElementById('completedStages').textContent = currentStage;
+                
+                const levelProgress = (currentStage / 20) * 100;
+                document.getElementById('levelProgressFill').style.width = levelProgress + '%';
+                document.getElementById('levelProgressText').textContent = `${currentStage}/20 שלבים`;
+                
+                if (currentStage >= 20) {
+                    document.getElementById('nextStageText').textContent = 'עלה לרמה הבאה! 🚀';
+                    document.getElementById('completedLevel').textContent = globalLevel;
+                    document.getElementById('newLevel').textContent = globalLevel + 1;
+                    document.getElementById('newMultiplier').textContent = globalLevel + 1;
+                    
+                    setTimeout(() => {
+                        document.getElementById('stageComplete').style.display = 'none';
+                        document.getElementById('levelComplete').style.display = 'flex';
+                    }, 3000);
+                } else {
+                    document.getElementById('nextStageText').textContent = `שלב ${currentStage + 1}: ${stageNames[currentStage]} →`;
+                }
+                
+                document.getElementById('stageComplete').style.display = 'flex';
+            } else {
+                const target = Math.floor(baseStageTargets[currentStage - 1] * globalLevel);
+                document.getElementById('failScore').textContent = score;
+                document.getElementById('failTarget').textContent = target;
+                document.getElementById('gameOver').style.display = 'flex';
+            }
+        }
+        
+        function nextStage() {
+            currentStage++;
+            initStage();
+            document.getElementById('stageComplete').style.display = 'none';
+        }
+        
+        function nextLevel() {
+            globalLevel++;
+            currentStage = 1;
+            levelScore = 0;
+            levelStarsCaught = 0;
+            levelStartTime = Date.now();
+            updateGlobalLevel();
+            updateLegend();
+            initStage();
+            document.getElementById('levelComplete').style.display = 'none';
+        }
+        
+        function retryStage() {
+            initStage();
+            document.getElementById('gameOver').style.display = 'none';
+        }
+        
+        function restartGame() {
+            globalLevel = 1;
+            currentStage = 1;
+            levelScore = 0;
+            levelStarsCaught = 0;
+            levelStartTime = Date.now();
+            updateGlobalLevel();
+            updateLegend();
+            document.getElementById('gameOver').style.display = 'none';
+            document.getElementById('stageComplete').style.display = 'none';
+            document.getElementById('levelComplete').style.display = 'none';
+            initStage();
+        }
+        
+        function initStage() {
+            score = 0;
+            lives = 3;
+            combo = 1;
+            comboCount = 0;
+            maxCombo = 1;
+            starsCaught = 0;
+            bombsAvoided = 0;
+            blackholesAvoided = 0;
+            lightningAvoided = 0;
+            shieldTime = 0;
+            speedBoostTime = 0;
+            freezeTime = 0;
+            magnetTime = 0;
+            doublePointsTime = 0;
+            lastStarType = null;
+            gameRunning = true;
+            stageStartTime = Date.now();
+            
+            starSpeed = 1.5 + (globalLevel * 0.2) + (currentStage * 0.05);
+            spawnRate = 0.02 + (globalLevel * 0.003) + (currentStage * 0.001);
+            bombChance = 0.08 + (globalLevel * 0.01) + (currentStage * 0.005);
+            
+            updateStageInfo();
+            updateScore();
+            updateLives();
+            updateCombo();
+            updateSpecialEffects();
+            
+            player.classList.remove('player-shield');
+            
+            const objects = gameContainer.querySelectorAll('.star, .bomb, .blackhole, .lightning, .powerup, .combo-text, .points-text');
+            objects.forEach(obj => obj.remove());
+            
+            gameLoop();
+        }
+        
+        function gameLoop() {
+            if (!gameRunning) return;
+            
+            if (shieldTime > 0) shieldTime--;
+            if (speedBoostTime > 0) speedBoostTime--;
+            if (freezeTime > 0) freezeTime--;
+            if (magnetTime > 0) magnetTime--;
+            if (doublePointsTime > 0) doublePointsTime--;
+            
+            updateSpecialEffects();
+            
+            if (Math.random() < spawnRate) {
+                createFallingObject();
+            }
+            
+            setTimeout(() => requestAnimationFrame(gameLoop), 16);
+        }
+        
+        // התחלת המשחק
+        document.addEventListener('DOMContentLoaded', function() {
+            const rect = gameContainer.getBoundingClientRect();
+            mouseX = rect.width / 2;
+            mouseY = rect.height / 2;
+            player.style.left = (mouseX - 20) + 'px';
+            player.style.top = (mouseY - 20) + 'px';
+            
+            updateGlobalLevel();
+            updateLegend();
+            
+            // התחל את המשחק אחרי רגע קצר
+            setTimeout(() => {
+                initStage();
+            }, 100);
+        });
+        
+        window.addEventListener('resize', () => {
+            const rect = gameContainer.getBoundingClientRect();
+            mouseX = Math.min(mouseX, rect.width - 40);
+            mouseY = Math.min(mouseY, rect.height - 40);
+            player.style.left = (mouseX - 20) + 'px';
+            player.style.top = (mouseY - 20) + 'px';
+        });
+    </script>
+</body>
+</html>
