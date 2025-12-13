@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>תפוס את הכוכבים - מורחב</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #1e3c72, #2a5298, #1a237e);
+            font-family: 'Arial', sans-serif;
+            color: white;
+            overflow: hidden;
+        }
+        
+        #gameContainer {
+            position: relative;
+            width: 100%;
+            height: 75vh;
+            border: 3px solid #fff;
+            border-radius: 15px;
+            background: radial-gradient(circle at center, #0f1419, #1a237e);
+            overflow: hidden;
+            cursor: none;
+        }
+        
+        #gameInfo {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+        
+        .info-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        #score { color: #ffeb3b; font-weight: bold; }
+        #lives { color: #f44336; font-weight: bold; }
+        #combo { color: #4caf50; font-weight: bold; }
+        #shield { color: #2196f3; font-weight: bold; }
+        
+        .star {
+            position: absolute;
+            font-size: 30px;
+            cursor: pointer;
+            transition: transform 0.1s;
+            animation: twinkle 1.5s infinite alternate;
+        }
+        
+        .star-gold { color: #ffd700; font-size: 35px; }
+        .star-silver { color: #c0c0c0; font-size: 32px; }
+        .star-blue { color: #4169e1; font-size: 28px; }
+        .star-rainbow { font-size: 40px; animation: rainbow 2s infinite linear, twinkle 1.5s infinite alternate; }
+        
+        @keyframes rainbow {
+            0% { filter: hue-rotate(0deg); }
+            100% { filter: hue-rotate(360deg); }
+        }
+        
+        .star:hover {
+            transform: scale(1.2);
+        }
+        
+        @keyframes twinkle {
+            0% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+        
+        .bomb {
+            position: absolute;
+            font-size: 25px;
+            cursor: pointer;
+            animation: rotate 2s infinite linear;
+        }
+        
+        .powerup {
+            position: absolute;
+            font-size: 30px;
+            cursor: pointer;
+            animation: pulse 1s infinite alternate;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            100% { transform: scale(1.1); }
+        }
+        
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        
+        #player {
+            position: absolute;
+            font-size: 40px;
+            pointer-events: none;
+            z-index: 10;
+            transition: transform 0.1s;
+        }
+        
+        .player-shield {
+            box-shadow: 0 0 20px #2196f3;
+            animation: shieldGlow 1s infinite alternate;
+        }
+        
+        @keyframes shieldGlow {
+            0% { box-shadow: 0 0 20px #2196f3; }
+            100% { box-shadow: 0 0 30px #64b5f6; }
+        }
+        
+        #gameOver {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+            border: 2px solid #ffeb3b;
+            display: none;
+        }
+        
+        button {
+            background: #4caf50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+        }
+        
+        button:hover {
+            background: #45a049;
+        }
+        
+        #instructions {
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: 12px;
+            opacity: 0.8;
+            line-height: 1.4;
+        }
+        
+        .combo-text {
+            position: absolute;
+            color: #4caf50;
+            font-weight: bold;
+            font-size: 20px;
+            pointer-events: none;
+            animation: floatUp 1s ease-out forwards;
+        }
+        
+        @keyframes floatUp {
+            0% { opacity: 1; transform: translateY(0); }
+            100% { opacity: 0; transform: translateY(-50px); }
+        }
+        
+        .points-text {
+            position: absolute;
+            color: #ffeb3b;
+            font-weight: bold;
+            font-size: 18px;
+            pointer-events: none;
+            animation: floatUp 0.8s ease-out forwards;
+        }
+        
+        #legend {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 10px;
+            font-size: 12px;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div id="instructions">
+        הזז את העכבר כדי לתפוס כוכבים שונים ואל תיגע בפצצות!<br>
+        תפוס כוכבים ברצף לקבלת בונוס קומבו x2, x3, x4!
+    </div>
+    
+    <div id="legend">
+        <div class="legend-item">⭐ רגיל (5)</div>
+        <div class="legend-item">🌟 כחול (10)</div>
+        <div class="legend-item">💫 כסף (20)</div>
+        <div class="legend-item">🌠 זהב (50)</div>
+        <div class="legend-item">🎆 קשת (100)</div>
+        <div class="legend-item">🛡️ מגן</div>
+        <div class="legend-item">❤️ חיים</div>
+        <div class="legend-item">⚡ מהירות</div>
+        <div class="legend-item">💥 פצצה</div>
+    </div>
+    
+    <div id="gameInfo">
+        <div class="info-section">
+            <span id="score">נקודות: 0</span>
+            <span id="combo">קומבו: x1</span>
+        </div>
+        <div class="info-section">
+            <span id="lives">חיים: 3</span>
+            <span id="level">רמה: 1</span>
+        </div>
+        <div class="info-section">
+            <span id="shield">מגן: 0</span>
+            <span id="speed">מהירות: רגיל</span>
+        </div>
+    </div>
+    
+    <div id="gameContainer">
+        <div id="player">🎯</div>
+        <div id="gameOver">
+            <h2>המשחק נגמר!</h2>
+            <p>הניקוד הסופי: <span id="finalScore">0</span></p>
+            <p>רמה גבוהה ביותר: <span id="finalLevel">1</span></p>
+            <p>קומבו מקסימלי: <span id="maxCombo">1</span></p>
+            <button onclick="restartGame()">שחק שוב</button>
+        </div>
+    </div>
+
+    <script>
+        let score = 0;
+        let lives = 3;
+        let level = 1;
+        let gameRunning = true;
+        let starSpeed = 2;
+        let spawnRate = 0.025;
+        let bombChance = 0.12;
+        let combo = 1;
+        let comboCount = 0;
+        let maxCombo = 1;
+        let shieldTime = 0;
+        let speedBoostTime = 0;
+        let lastStarType = null;
+        
+        const gameContainer = document.getElementById('gameContainer');
+        const player = document.getElementById('player');
+        const scoreElement = document.getElementById('score');
+        const livesElement = document.getElementById('lives');
+        const levelElement = document.getElementById('level');
+        const comboElement = document.getElementById('combo');
+        const shieldElement = document.getElementById('shield');
+        const speedElement = document.getElementById('speed');
+        const gameOverDiv = document.getElementById('gameOver');
+        const finalScoreElement = document.getElementById('finalScore');
+        const finalLevelElement = document.getElementById('finalLevel');
+        const maxComboElement = document.getElementById('maxCombo');
+        
+        let mouseX = gameContainer.clientWidth / 2;
+        let mouseY = gameContainer.clientHeight / 2;
+        
+        // סוגי כוכבים עם הסתברויות ונקודות
+        const starTypes = [
+            { emoji: '⭐', points: 5, chance: 0.4, class: 'star-regular' },
+            { emoji: '🌟', points: 10, chance: 0.3, class: 'star-blue' },
+            { emoji: '💫', points: 20, chance: 0.15, class: 'star-silver' },
+            { emoji: '🌠', points: 50, chance: 0.08, class: 'star-gold' },
+            { emoji: '🎆', points: 100, chance: 0.02, class: 'star-rainbow' }
+        ];
+        
+        const powerups = [
+            { emoji: '🛡️', type: 'shield', chance: 0.03 },
+            { emoji: '❤️', type: 'life', chance: 0.02 },
+            { emoji: '⚡', type: 'speed', chance: 0.03 }
+        ];
+        
+        // עדכון מיקום השחקן
+        gameContainer.addEventListener('mousemove', (e) => {
+            const rect = gameContainer.getBoundingClientRect();
+            mouseX = e.clientX - rect.left;
+            mouseY = e.clientY - rect.top;
+            player.style.left = (mouseX - 20) + 'px';
+            player.style.top = (mouseY - 20) + 'px';
+        });
+        
+        function getRandomStarType() {
+            const random = Math.random();
+            let cumulative = 0;
+            for (let type of starTypes) {
+                cumulative += type.chance;
+                if (random < cumulative) return type;
+            }
+            return starTypes[0];
+        }
+        
+        function getRandomPowerup() {
+            const random = Math.random();
+            let cumulative = 0;
+            for (let powerup of powerups) {
+                cumulative += powerup.chance;
+                if (random < cumulative) return powerup;
+            }
+            return null;
+        }
+        
+        function showFloatingText(x, y, text, className) {
+            const element = document.createElement('div');
+            element.className = className;
+            element.textContent = text;
+            element.style.left = x + 'px';
+            element.style.top = y + 'px';
+            gameContainer.appendChild(element);
+            
+            setTimeout(() => element.remove(), 1000);
+        }
+        
+        // יצירת אובייקטים נופלים
+        function createFallingObject() {
+            if (!gameRunning) return;
+            
+            const random = Math.random();
+            const object = document.createElement('div');
+            let objectType = 'star';
+            
+            // קביעת סוג האובייקט
+            if (random < bombChance) {
+                objectType = 'bomb';
+                object.className = 'bomb';
+                object.textContent = '💥';
+            } else {
+                const powerupCheck = Math.random();
+                const powerup = getRandomPowerup();
+                
+                if (powerup && powerupCheck < 0.1) {
+                    objectType = 'powerup';
+                    object.className = 'powerup';
+                    object.textContent = powerup.emoji;
+                    object.dataset.powerupType = powerup.type;
+                } else {
+                    const starType = getRandomStarType();
+                    object.className = `star ${starType.class}`;
+                    object.textContent = starType.emoji;
+                    object.dataset.points = starType.points;
+                    object.dataset.starType = starType.emoji;
+                }
+            }
+            
+            object.style.left = Math.random() * (gameContainer.clientWidth - 40) + 'px';
+            object.style.top = '-40px';
+            
+            gameContainer.appendChild(object);
+            
+            // אנימציה של נפילה
+            function fall() {
+                if (!gameRunning) {
+                    object.remove();
+                    return;
+                }
+                
+                const currentTop = parseInt(object.style.top);
+                const fallSpeed = speedBoostTime > 0 ? starSpeed * 0.7 : starSpeed;
+                object.style.top = (currentTop + fallSpeed) + 'px';
+                
+                // בדיקת התנגשות עם השחקן
+                const objectRect = object.getBoundingClientRect();
+                const playerRect = player.getBoundingClientRect();
+                
+                if (objectRect.left < playerRect.right &&
+                    objectRect.right > playerRect.left &&
+                    objectRect.top < playerRect.bottom &&
+                    objectRect.bottom > playerRect.top) {
+                    
+                    handleCollision(object, objectType);
+                    return;
+                }
+                
+                // הסרת האובייקט אם הוא יצא מהמסך
+                if (currentTop > gameContainer.clientHeight) {
+                    object.remove();
+                    // איפוס קומבו אם כוכב יצא מהמסך
+                    if (objectType === 'star') {
+                        resetCombo();
+                    }
+                    return;
+                }
+                
+                requestAnimationFrame(fall);
+            }
+            
+            requestAnimationFrame(fall);
+        }
+        
+        function handleCollision(object, objectType) {
+            const rect = object.getBoundingClientRect();
+            const gameRect = gameContainer.getBoundingClientRect();
+            const x = rect.left - gameRect.left;
+            const y = rect.top - gameRect.top;
+            
+            if (objectType === 'bomb') {
+                if (shieldTime > 0) {
+                    showFloatingText(x, y, 'חסום!', 'combo-text');
+                } else {
+                    lives--;
+                    updateLives();
+                    showFloatingText(x, y, 'אוי!', 'points-text');
+                    resetCombo();
+                    if (lives <= 0) {
+                        endGame();
+                    }
+                }
+            } else if (objectType === 'powerup') {
+                handlePowerup(object.dataset.powerupType, x, y);
+            } else if (objectType === 'star') {
+                const points = parseInt(object.dataset.points) * combo;
+                score += points;
+                updateScore();
+                
+                // עדכון קומבו
+                if (lastStarType === object.dataset.starType) {
+                    comboCount++;
+                    if (comboCount >= 3) {
+                        combo = Math.min(combo + 1, 5);
+                        maxCombo = Math.max(maxCombo, combo);
+                        updateCombo();
+                        showFloatingText(x, y, `קומבו x${combo}!`, 'combo-text');
+                    }
+                } else {
+                    comboCount = 1;
+                    combo = Math.max(combo - 1, 1);
+                    updateCombo();
+                }
+                
+                lastStarType = object.dataset.starType;
+                showFloatingText(x, y, `+${points}`, 'points-text');
+                
+                // העלאת רמה
+                if (score >= level * 200) {
+                    levelUp();
+                }
+            }
+            
+            object.remove();
+        }
+        
+        function handlePowerup(type, x, y) {
+            switch(type) {
+                case 'shield':
+                    shieldTime = 300; // 5 שניות
+                    player.classList.add('player-shield');
+                    showFloatingText(x, y, 'מגן!', 'combo-text');
+                    break;
+                case 'life':
+                    lives = Math.min(lives + 1, 5);
+                    updateLives();
+                    showFloatingText(x, y, 'חיים!', 'combo-text');
+                    break;
+                case 'speed':
+                    speedBoostTime = 300;
+                    showFloatingText(x, y, 'מהירות!', 'combo-text');
+                    break;
+            }
+        }
+        
+        function resetCombo() {
+            combo = 1;
+            comboCount = 0;
+            lastStarType = null;
+            updateCombo();
+        }
+        
+        function updateScore() {
+            scoreElement.textContent = `נקודות: ${score}`;
+        }
+        
+        function updateLives() {
+            livesElement.textContent = `חיים: ${lives}`;
+        }
+        
+        function updateCombo() {
+            comboElement.textContent = `קומבו: x${combo}`;
+            comboElement.style.color = combo > 1 ? '#4caf50' : '#fff';
+        }
+        
+        function updateShield() {
+            if (shieldTime > 0) {
+                shieldElement.textContent = `מגן: ${Math.ceil(shieldTime/60)}`;
+                shieldElement.style.color = '#2196f3';
+            } else {
+                shieldElement.textContent = 'מגן: 0';
+                shieldElement.style.color = '#666';
+                player.classList.remove('player-shield');
+            }
+        }
+        
+        function updateSpeed() {
+            if (speedBoostTime > 0) {
+                speedElement.textContent = 'מהירות: מואץ';
+                speedElement.style.color = '#ff9800';
+            } else {
+                speedElement.textContent = 'מהירות: רגיל';
+                speedElement.style.color = '#fff';
+            }
+        }
+        
+        function levelUp() {
+            level++;
+            starSpeed += 0.3;
+            spawnRate += 0.003;
+            bombChance = Math.min(bombChance + 0.015, 0.25);
+            levelElement.textContent = `רמה: ${level}`;
+        }
+        
+        function endGame() {
+            gameRunning = false;
+            finalScoreElement.textContent = score;
+            finalLevelElement.textContent = level;
+            maxComboElement.textContent = maxCombo;
+            gameOverDiv.style.display = 'block';
+        }
+        
+        function restartGame() {
+            score = 0;
+            lives = 3;
+            level = 1;
+            starSpeed = 2;
+            spawnRate = 0.025;
+            bombChance = 0.12;
+            combo = 1;
+            comboCount = 0;
+            maxCombo = 1;
+            shieldTime = 0;
+            speedBoostTime = 0;
+            lastStarType = null;
+            gameRunning = true;
+            
+            updateScore();
+            updateLives();
+            updateCombo();
+            updateShield();
+            updateSpeed();
+            levelElement.textContent = `רמה: ${level}`;
+            gameOverDiv.style.display = 'none';
+            
+            // ניקוי כל האובייקטים
+            const objects = gameContainer.querySelectorAll('.star, .bomb, .powerup, .combo-text, .points-text');
+            objects.forEach(obj => obj.remove());
+            
+            gameLoop();
+        }
+        
+        function gameLoop() {
+            if (!gameRunning) return;
+            
+            // עדכון טיימרים
+            if (shieldTime > 0) {
+                shieldTime--;
+                updateShield();
+            }
+            
+            if (speedBoostTime > 0) {
+                speedBoostTime--;
+                updateSpeed();
+            }
+            
+            // יצירת אובייקטים חדשים
+            if (Math.random() < spawnRate) {
+                createFallingObject();
+            }
+            
+            setTimeout(() => requestAnimationFrame(gameLoop), 16);
+        }
+        
+        // התחלת המשחק
+        player.style.left = (mouseX - 20) + 'px';
+        player.style.top = (mouseY - 20) + 'px';
+        updateCombo();
+        updateShield();
+        updateSpeed();
+        gameLoop();
+    </script>
+</body>
+</html>
