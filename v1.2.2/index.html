@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>תפוס את הכוכבים - 20 שלבים</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="globalLevel">רמה גלובלית: 1 (מכפיל נקודות: x1)</div>
+    
+    <div id="legend">
+        <div class="legend-item">⭐ רגיל (5×רמה)</div>
+        <div class="legend-item">🌟 כחול (10×רמה)</div>
+        <div class="legend-item">💫 כסף (20×רמה)</div>
+        <div class="legend-item">🌠 זהב (50×רמה)</div>
+        <div class="legend-item">🎆 קשת (100×רמה)</div>
+        <div class="legend-item">🛡️ מגן</div>
+        <div class="legend-item">❤️ חיים</div>
+        <div class="legend-item">⚡ מהירות</div>
+        <div class="legend-item" id="freezeLegend" style="opacity: 0.5;">❄️ הקפאה (רמה 2+)</div>
+        <div class="legend-item" id="magnetLegend" style="opacity: 0.5;">🧲 מגנט (רמה 3+)</div>
+        <div class="legend-item" id="doubleLegend" style="opacity: 0.5;">💎 כפול (רמה 4+)</div>
+        <div class="legend-item" style="color: #f44336;">💥 פצצה</div>
+        <div class="legend-item" style="color: #9c27b0;">🕳️ חור שחור</div>
+        <div class="legend-item" style="color: #ff5722;">⛈️ זיק</div>
+    </div>
+    
+    <div id="stageInfo">
+        <div id="stageTitle">שלב 1: התחלה</div>
+        <div id="stageGoal">יעד: 100 נקודות</div>
+        <div class="progress-bar">
+            <div class="progress-fill" id="progressFill" style="width: 0%">
+                <div class="progress-text" id="progressText">0 / 100</div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="gameInfo">
+        <div class="info-section">
+            <div>נקודות: <span id="score">0</span></div>
+            <div>קומבו: <span id="combo">x1</span></div>
+        </div>
+        <div class="info-section">
+            <div>חיים: <span id="lives">3</span></div>
+            <div>שלב: <span id="stageNum">1</span>/20</div>
+        </div>
+        <div class="info-section">
+            <div>מגן: <span id="shield">0</span></div>
+            <div>מיוחד: <span id="special">אין</span></div>
+        </div>
+        <div class="info-section stat-small" style="min-width: 200px;">
+            <div id="manualSavePanel" style="justify-content:center">
+                <button id="saveBtn" class="small-btn">💾 שמור</button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="gameContainer">
+        <div id="player">🎯</div>
+        
+        <div id="gameOver">
+            <h2>נכשלת בשלב!</h2>
+            <p>ניקוד: <span id="failScore">0</span> מתוך <span id="failTarget">0</span></p>
+            <div id="finalStats"></div>
+            <button class="retry-btn" onclick="retryStage()">נסה שוב</button>
+        </div>
+        
+        <div id="stageComplete">
+            <h2>🎉 כל הכבוד! עברת את השלב! 🎉</h2>
+            <p>שלב <span id="completedStage">1</span> - <span id="completedStageName">התחלה</span> הושלם!</p>
+            
+            <div style="background: rgba(76,175,80,0.2); padding: 15px; border-radius: 10px; margin: 15px 0;">
+                <h3>📊 סטטיסטיקות השלב:</h3>
+                <p>🎯 ניקוד השלב: <span id="stageScore">0</span> נקודות</p>
+                <p>⏱️ זמן השלב: <span id="stageTime">0</span> שניות</p>
+                <p>🔥 קומבו מקסימלי: <span id="stageMaxCombo">1</span></p>
+                <p>⭐ כוכבים שנתפסו: <span id="stageStarsCaught">0</span></p>
+                <p>💥 פצצות שנמנעו: <span id="stageBombsAvoided">0</span></p>
+                <p>🕳️ חורים שחורים שנמנעו: <span id="stageBlackholesAvoided">0</span></p>
+                <p>⛈️ ברקים שנמנעו: <span id="stageLightningAvoided">0</span></p>
+            </div>
+            
+            <div style="background: rgba(255,152,0,0.2); padding: 15px; border-radius: 10px; margin: 15px 0;">
+                <h3>📈 התקדמות ברמה הגלובלית:</h3>
+                <p>📊 סה"כ נקודות ברמה: <span id="levelScore">0</span></p>
+                <p>🎮 שלבים שהושלמו: <span id="completedStages">0</span>/20</p>
+                <div style="width: 100%; background: rgba(0,0,0,0.3); border-radius: 10px; height: 20px; margin: 10px 0;">
+                    <div id="levelProgressFill" style="height: 100%; background: linear-gradient(90deg, #ff9800, #ffc107); border-radius: 10px; transition: width 0.3s; position: relative;">
+                        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 12px; font-weight: bold; color: white; text-shadow: 1px 1px 2px rgba(0,0,0,0.8);" id="levelProgressText"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div style="display: flex; gap: 10px; justify-content: center; margin-top: 20px;">
+                <button onclick="nextStage()" style="background: linear-gradient(45deg, #4caf50, #8bc34a); font-size: 18px; padding: 15px 30px;">
+                    <span id="nextStageText">שלב הבא →</span>
+                </button>
+                <button onclick="retryStage()" class="retry-btn">נסה שלב זה שוב</button>
+            </div>
+        </div>
+        
+        <div id="levelComplete">
+            <h2>🎉 מזל טוב! עליתי רמה גלובלית! 🎉</h2>
+            <p>סיימת רמה <span id="completedLevel">1</span>!</p>
+            <p>עליתי לרמה <span id="newLevel">2</span>!</p>
+            <p>מכפיל חדש: x<span id="newMultiplier">2</span></p>
+            <p>פאוור-אפים חדשים נפתחו!</p>
+            <button class="mega-btn" onclick="nextLevel()">התחל רמה חדשה!</button>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
