@@ -197,11 +197,8 @@ function updateLevelProgressUI() {
 // ----------------------------
 //  שמירה / טעינה מלאה (localStorage)
 // ----------------------------
-function saveGameState(reason = '', stageCompleted = false) {
+function saveGameState(reason = '') {
     try {
-        if (stageCompleted) {
-            currentStage = Math.min(currentStage + 1, 20);
-        }
         const state = {
             globalLevel, currentStage, score, levelScore, lives,
             starSpeed, spawnRate, bombChance, combo, comboCount, maxCombo,
@@ -580,14 +577,14 @@ function endStage(success) {
             document.getElementById('stageComplete').style.display = 'block';
         }
 
-        saveGameState("stageComplete", true);
+        saveGameState("stageComplete");
     } else {
         document.getElementById('failScore').textContent = score;
         document.getElementById('failTarget').textContent = Math.floor(baseStageTargets[currentStage - 1] * globalLevel);
         document.getElementById('finalStats').textContent =
             `קומבו מקסימלי: ${maxCombo}, כוכבים: ${starsCaught}, פצצות שנמנעו: ${bombsAvoided}`;
         document.getElementById('gameOver').style.display = 'block';
-        saveGameState("stageFailed", false);
+        saveGameState("stageFailed");
     }
 }
 
@@ -661,6 +658,41 @@ function resumeGame() {
     lastTimestamp = null;
     requestAnimationFrame(gameLoop);
 }
+
+// ----------------------------
+//  Debug commands (F12 console)
+// ----------------------------
+window.setlvl = function(stage) {
+    const newStage = Math.max(1, Math.min(stage, 20));
+    currentStage = newStage;
+    score = 0;
+    combo = 1;
+    starsCaught = bombsAvoided = blackholesAvoided = lightningAvoided = 0;
+    maxCombo = 1;
+    gameContainer.querySelectorAll('.star, .bomb, .blackhole, .lightning, .powerup').forEach(el => el.remove());
+    document.getElementById('gameOver').style.display = 'none';
+    document.getElementById('stageComplete').style.display = 'none';
+    document.getElementById('levelComplete').style.display = 'none';
+    initStage();
+    saveGameState("debugSetStage");
+    console.log(`Stage set to: ${newStage}`);
+    return `✓ Stage changed to ${newStage}`;
+};
+
+window.addPoints = function(points) {
+    score += points;
+    levelScore += points;
+    updateScore();
+    updateProgress();
+
+    const target = Math.floor(baseStageTargets[currentStage - 1] * globalLevel);
+    if (gameRunning && score >= target) {
+        endStage(true);
+    }
+
+    console.log(`Added ${points} points. Score: ${score}`);
+    return `✓ Score: ${score}`;
+};
 
 // ----------------------------
 //  התחלה אוטומטית
