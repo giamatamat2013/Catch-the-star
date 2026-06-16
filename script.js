@@ -455,6 +455,7 @@ function moveObjects() {
                 if (shieldTime > 0) {
                     shieldTime -= 60;
                     updateSpecialEffects();
+                    gamepadVibrate(120, 0.4, 0.2);
                     obj.remove();
                 } else {
                     lives--;
@@ -463,6 +464,8 @@ function moveObjects() {
                     updateCombo();
                     if (lives <= 0) {
                         endStage(false);
+                    } else {
+                        gamepadVibrate(220, 0.8, 0.6);
                     }
                     obj.remove();
                 }
@@ -476,6 +479,7 @@ function moveObjects() {
                 if (type === 'double') doublePointsTime = 300;
                 updateLives();
                 updateSpecialEffects();
+                gamepadVibrate(140, 0.3, 0.5);
                 obj.remove();
             }
         } else if (magnetTime > 0 && obj.classList.contains('star')) {
@@ -548,8 +552,14 @@ function gameLoop(timestamp) {
 // ----------------------------
 function endStage(success) {
     gameRunning = false;
+    gamepadMenuState.menu = null; // אתחול ניווט תפריט לבקר
 
     if (success) {
+        // רטט חגיגי ברור בסיום שלב — שתי פעימות, בעדיפות גבוהה כדי שלא יידרס
+        gamepadVibratePattern([
+            { duration: 180, strong: 0.7, weak: 0.9, gap: 90 },
+            { duration: 320, strong: 1.0, weak: 1.0 }
+        ]);
         completedStages++;
         document.getElementById('completedStage').textContent = currentStage;
         document.getElementById('completedStageName').textContent = stageNames[currentStage - 1];
@@ -584,6 +594,7 @@ function endStage(success) {
         document.getElementById('finalStats').textContent =
             `קומבו מקסימלי: ${maxCombo}, כוכבים: ${starsCaught}, פצצות שנמנעו: ${bombsAvoided}`;
         document.getElementById('gameOver').style.display = 'block';
+        gamepadVibrate(600, 1.0, 1.0, true); // רטט חזק במוות / כישלון (עדיפות גבוהה)
         saveGameState("stageFailed");
     }
 }
@@ -695,6 +706,198 @@ window.addPoints = function(points) {
 };
 
 // ----------------------------
+//  תמיכה בבקרי משחק (Gamepad API)
+// ----------------------------
+let gamepadIndex = null;          // אינדקס הבקר המחובר
+let gamepadPrevButtons = [];      // מצב כפתורים קודם (לזיהוי לחיצה בודדת)
+const GAMEPAD_DEADZONE = 0.2;     // אזור מת לסטיק
+const GAMEPAD_SPEED = 4;          // מהירות תנועת השחקן (פיקסלים לפריים)
+
+// מצב ניווט בתפריטים
+const gamepadMenuState = { menu: null, buttons: [], index: 0, lastNavTime: 0 };
+
+// נעילת רטט — רטט חשוב (מוות/סיום שלב) לא יידרס ע"י רטט קצר של ניווט בתפריט
+let gamepadVibrateLockUntil = 0;
+
+// מיפוי כפתורים סטנדרטי
+const BTN = {
+    A: 0, B: 1, X: 2, Y: 3,
+    LB: 4, RB: 5,
+    BACK: 8, START: 9,
+    DPAD_UP: 12, DPAD_DOWN: 13, DPAD_LEFT: 14, DPAD_RIGHT: 15
+};
+
+function showGamepadToast(text) {
+    const toast = document.getElementById('gamepadToast');
+    if (!toast) return;
+    toast.textContent = text;
+    toast.classList.add('show');
+    clearTimeout(toast._hideTimer);
+    toast._hideTimer = setTimeout(() => toast.classList.remove('show'), 2500);
+}
+
+// הפעלת רטט בבקר (אם נתמך)
+// priority=true => רטט חשוב שנועל ולא ניתן לדריסה למשך זמנו
+function gamepadVibrate(duration = 200, strong = 1.0, weak = 1.0, priority = false) {
+    if (gamepadIndex === null) return;
+    const now = performance.now();
+    // רטט לא-חשוב לא ידרוס רטט חשוב שעדיין פעיל
+    if (!priority && now < gamepadVibrateLockUntil) return;
+
+    const pads = navigator.getGamepads ? navigator.getGamepads() : [];
+    const gp = pads[gamepadIndex];
+    if (!gp) return;
+    const act = gp.vibrationActuator || (gp.hapticActuators && gp.hapticActuators[0]);
+    if (!act) return;
+    if (priority) gamepadVibrateLockUntil = now + duration;
+    try {
+        if (act.playEffect) {
+            act.playEffect('dual-rumble', {
+                duration,
+                startDelay: 0,
+                strongMagnitude: strong,
+                weakMagnitude: weak
+            }).catch(() => {});
+        } else if (act.pulse) {
+            act.pulse(Math.max(strong, weak), duration);
+        }
+    } catch (e) { /* התעלם */ }
+}
+
+// רצף פעימות רטט (לתחושה ברורה בסיום שלב)
+function gamepadVibratePattern(pulses) {
+    let delay = 0;
+    for (const p of pulses) {
+        setTimeout(() => gamepadVibrate(p.duration, p.strong, p.weak, true), delay);
+        delay += p.duration + (p.gap || 0);
+    }
+}
+
+window.addEventListener('gamepadconnected', (e) => {
+    if (gamepadIndex === null) gamepadIndex = e.gamepad.index;
+    showGamepadToast('🎮 בקר חובר — אפשר לשחק!');
+    gamepadVibrate(150, 0.4, 0.4);
+});
+
+window.addEventListener('gamepaddisconnected', (e) => {
+    if (gamepadIndex === e.gamepad.index) {
+        gamepadIndex = null;
+        gamepadPrevButtons = [];
+        showGamepadToast('🎮 בקר נותק');
+    }
+});
+
+// מציאת התפריט הפעיל (אם מוצג)
+function getActiveMenu() {
+    for (const id of ['levelComplete', 'stageComplete', 'gameOver']) {
+        const el = document.getElementById(id);
+        if (el && getComputedStyle(el).display !== 'none') return el;
+    }
+    return null;
+}
+
+function highlightMenuButton() {
+    gamepadMenuState.buttons.forEach((b, i) => {
+        b.classList.toggle('gamepad-focus', i === gamepadMenuState.index);
+    });
+}
+
+// ניווט בתפריט בעזרת הבקר
+function handleMenuInput(gp, menu, justPressed) {
+    // אתחול בעת פתיחת תפריט חדש
+    if (gamepadMenuState.menu !== menu) {
+        gamepadMenuState.menu = menu;
+        gamepadMenuState.buttons = Array.from(menu.querySelectorAll('button'));
+        gamepadMenuState.index = 0;
+        gamepadMenuState.lastNavTime = performance.now();
+        highlightMenuButton();
+        return; // בפריים הראשון לא קוראים קלט — מונע דריסת רטט סיום השלב מסטיק שעדיין מוטה
+    }
+    const buttons = gamepadMenuState.buttons;
+    if (buttons.length === 0) return;
+
+    // קביעת כיוון ניווט (D-pad או סטיק עם השהיה)
+    let dir = 0;
+    if (justPressed(BTN.DPAD_LEFT) || justPressed(BTN.DPAD_UP)) dir = -1;
+    else if (justPressed(BTN.DPAD_RIGHT) || justPressed(BTN.DPAD_DOWN)) dir = 1;
+    else {
+        const ax = gp.axes[0] || 0, ay = gp.axes[1] || 0;
+        const mag = Math.max(Math.abs(ax), Math.abs(ay));
+        const now = performance.now();
+        if (mag > 0.5 && now - gamepadMenuState.lastNavTime > 250) {
+            gamepadMenuState.lastNavTime = now;
+            const v = Math.abs(ax) >= Math.abs(ay) ? ax : ay;
+            dir = v > 0 ? 1 : -1;
+        }
+    }
+
+    if (dir !== 0) {
+        gamepadMenuState.index = (gamepadMenuState.index + dir + buttons.length) % buttons.length;
+        highlightMenuButton();
+        gamepadVibrate(40, 0.15, 0.15);
+    }
+
+    // A = אישור הבחירה
+    if (justPressed(BTN.A)) {
+        gamepadVibrate(60, 0.25, 0.25);
+        buttons[gamepadMenuState.index].click();
+    }
+}
+
+// תנועת השחקן בעזרת הבקר
+function handleGameplayInput(gp, justPressed) {
+    let ax = gp.axes[0] || 0;
+    let ay = gp.axes[1] || 0;
+    if (Math.abs(ax) < GAMEPAD_DEADZONE) ax = 0;
+    if (Math.abs(ay) < GAMEPAD_DEADZONE) ay = 0;
+
+    // D-pad כתנועה חלופית
+    if (gp.buttons[BTN.DPAD_LEFT] && gp.buttons[BTN.DPAD_LEFT].pressed) ax = -1;
+    if (gp.buttons[BTN.DPAD_RIGHT] && gp.buttons[BTN.DPAD_RIGHT].pressed) ax = 1;
+    if (gp.buttons[BTN.DPAD_UP] && gp.buttons[BTN.DPAD_UP].pressed) ay = -1;
+    if (gp.buttons[BTN.DPAD_DOWN] && gp.buttons[BTN.DPAD_DOWN].pressed) ay = 1;
+
+    if (ax !== 0 || ay !== 0) {
+        const rect = gameContainer.getBoundingClientRect();
+        mouseX = Math.max(20, Math.min(rect.width - 20, mouseX + ax * GAMEPAD_SPEED));
+        mouseY = Math.max(20, Math.min(rect.height - 20, mouseY + ay * GAMEPAD_SPEED));
+        player.style.left = (mouseX - 20) + 'px';
+        player.style.top = (mouseY - 20) + 'px';
+    }
+
+    // Start / Y = שמירה ידנית
+    if (justPressed(BTN.START) || justPressed(BTN.Y)) {
+        saveGameState('gamepadSave');
+        showGamepadToast('💾 נשמר');
+        gamepadVibrate(80, 0.3, 0.3);
+    }
+}
+
+// לולאת סקירת הבקר — רצה תמיד (גם בתפריטים)
+function gamepadLoop() {
+    const pads = navigator.getGamepads ? navigator.getGamepads() : [];
+    const gp = gamepadIndex !== null ? pads[gamepadIndex] : null;
+
+    if (gp) {
+        const justPressed = (i) =>
+            gp.buttons[i] && gp.buttons[i].pressed && !gamepadPrevButtons[i];
+
+        const menu = getActiveMenu();
+        if (menu) {
+            handleMenuInput(gp, menu, justPressed);
+        } else {
+            gamepadMenuState.menu = null;
+            if (gameRunning) handleGameplayInput(gp, justPressed);
+        }
+
+        // שמירת מצב הכפתורים לפריים הבא
+        gamepadPrevButtons = gp.buttons.map(b => b.pressed);
+    }
+
+    requestAnimationFrame(gamepadLoop);
+}
+
+// ----------------------------
 //  התחלה אוטומטית
 // ----------------------------
 window.addEventListener('load', () => {
@@ -707,4 +910,11 @@ window.addEventListener('load', () => {
     autoSaveIntervalId = setInterval(() => {
         if (gameRunning) saveGameState("autosave");
     }, 30000);
+
+    // איתור בקר שכבר מחובר והפעלת לולאת הסקירה
+    const initialPads = navigator.getGamepads ? navigator.getGamepads() : [];
+    for (let i = 0; i < initialPads.length; i++) {
+        if (initialPads[i]) { gamepadIndex = i; break; }
+    }
+    requestAnimationFrame(gamepadLoop);
 });

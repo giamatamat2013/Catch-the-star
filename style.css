@@ -206,6 +206,38 @@ button:hover { background: #45a049; }
 .retry-btn { background: #ff9800; }
 .retry-btn:hover { background: #f57c00; }
 
+/* הדגשת כפתור נבחר בשליטת בקר */
+button.gamepad-focus {
+    outline: 3px solid #ffeb3b;
+    box-shadow: 0 0 18px #ffeb3b;
+    transform: scale(1.06);
+}
+
+/* הודעת בקר */
+#gamepadToast {
+    position: fixed;
+    top: 12px;
+    left: 50%;
+    transform: translateX(-50%) translateY(-80px);
+    background: rgba(0, 0, 0, 0.85);
+    color: #fff;
+    padding: 10px 22px;
+    border-radius: 25px;
+    border: 2px solid #4caf50;
+    font-size: 15px;
+    font-weight: bold;
+    z-index: 500;
+    opacity: 0;
+    transition: transform 0.35s ease, opacity 0.35s ease;
+    pointer-events: none;
+    white-space: nowrap;
+}
+
+#gamepadToast.show {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+}
+
 .mega-btn {
     background: linear-gradient(45deg, #ff6b35, #f7931e);
     font-weight: bold;
