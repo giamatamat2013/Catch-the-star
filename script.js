@@ -874,8 +874,8 @@ function handleGameplayInput(gp, justPressed) {
         player.style.top = (mouseY - 20) + 'px';
     }
 
-    // Start / Y = השהיה
-    if (justPressed(BTN.START) || justPressed(BTN.Y)) {
+    // Start / Y / Back = השהיה
+    if (justPressed(BTN.START) || justPressed(BTN.Y) || justPressed(BTN.BACK)) {
         togglePause();
         gamepadVibrate(80, 0.3, 0.3);
     }
@@ -895,7 +895,7 @@ function gamepadLoop() {
             handleMenuInput(gp, menu, justPressed);
         } else {
             gamepadMenuState.menu = null;
-            if (gameRunning) handleGameplayInput(gp, justPressed);
+            if (gameRunning || gamePaused) handleGameplayInput(gp, justPressed);
         }
 
         // שמירת מצב הכפתורים לפריים הבא
