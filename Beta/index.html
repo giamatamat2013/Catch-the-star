@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>תפוס את הכוכבים - מורחב</title>
+    <title>תפוס את הכוכבים - משחק שלבים</title>
     <style>
         body {
             margin: 0;
@@ -17,7 +17,7 @@
         #gameContainer {
             position: relative;
             width: 100%;
-            height: 75vh;
+            height: 70vh;
             border: 3px solid #fff;
             border-radius: 15px;
             background: radial-gradient(circle at center, #0f1419, #1a237e);
@@ -30,18 +30,32 @@
             justify-content: space-between;
             margin-bottom: 10px;
             font-size: 16px;
+            background: rgba(0,0,0,0.3);
+            padding: 10px;
+            border-radius: 10px;
         }
         
         .info-section {
             display: flex;
             flex-direction: column;
             align-items: center;
+            gap: 5px;
         }
         
         #score { color: #ffeb3b; font-weight: bold; }
         #lives { color: #f44336; font-weight: bold; }
         #combo { color: #4caf50; font-weight: bold; }
         #shield { color: #2196f3; font-weight: bold; }
+        #stageGoal { color: #ff9800; font-weight: bold; font-size: 18px; }
+        
+        #stageInfo {
+            text-align: center;
+            background: rgba(0,0,0,0.5);
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 10px;
+            border: 2px solid #4caf50;
+        }
         
         .star {
             position: absolute;
@@ -112,32 +126,46 @@
             100% { box-shadow: 0 0 30px #64b5f6; }
         }
         
-        #gameOver {
+        #gameOver, #stageComplete {
             position: absolute;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            background: rgba(0, 0, 0, 0.9);
+            background: rgba(0, 0, 0, 0.95);
             padding: 30px;
             border-radius: 15px;
             text-align: center;
             border: 2px solid #ffeb3b;
             display: none;
+            z-index: 100;
+        }
+        
+        #stageComplete {
+            border-color: #4caf50;
         }
         
         button {
             background: #4caf50;
             color: white;
             border: none;
-            padding: 10px 20px;
-            border-radius: 5px;
+            padding: 12px 24px;
+            border-radius: 8px;
             cursor: pointer;
             font-size: 16px;
-            margin: 5px;
+            margin: 8px;
+            transition: background 0.3s;
         }
         
         button:hover {
             background: #45a049;
+        }
+        
+        .retry-btn {
+            background: #ff9800;
+        }
+        
+        .retry-btn:hover {
+            background: #f57c00;
         }
         
         #instructions {
@@ -148,48 +176,80 @@
             line-height: 1.4;
         }
         
-        .combo-text {
+        .combo-text, .points-text {
             position: absolute;
-            color: #4caf50;
             font-weight: bold;
-            font-size: 20px;
+            font-size: 18px;
             pointer-events: none;
             animation: floatUp 1s ease-out forwards;
+            z-index: 50;
         }
+        
+        .combo-text { color: #4caf50; font-size: 20px; }
+        .points-text { color: #ffeb3b; }
         
         @keyframes floatUp {
             0% { opacity: 1; transform: translateY(0); }
             100% { opacity: 0; transform: translateY(-50px); }
         }
         
-        .points-text {
-            position: absolute;
-            color: #ffeb3b;
-            font-weight: bold;
-            font-size: 18px;
-            pointer-events: none;
-            animation: floatUp 0.8s ease-out forwards;
-        }
-        
         #legend {
             display: flex;
             justify-content: center;
-            gap: 15px;
-            margin-bottom: 10px;
-            font-size: 12px;
+            gap: 12px;
+            margin-bottom: 8px;
+            font-size: 11px;
+            opacity: 0.9;
         }
         
         .legend-item {
             display: flex;
             align-items: center;
-            gap: 5px;
+            gap: 3px;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 10px;
+            margin: 10px 0;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4caf50, #8bc34a);
+            border-radius: 10px;
+            transition: width 0.3s ease;
+            position: relative;
+        }
+        
+        .progress-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 12px;
+            font-weight: bold;
+            color: white;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
         }
     </style>
 </head>
 <body>
     <div id="instructions">
-        הזז את העכבר כדי לתפוס כוכבים שונים ואל תיגע בפצצות!<br>
-        תפוס כוכבים ברצף לקבלת בונוס קומבו x2, x3, x4!
+        השג את יעד הנקודות לעבור לשלב הבא! תפוס כוכבים ברצף לקבלת בונוס קומבו
+    </div>
+    
+    <div id="stageInfo">
+        <div id="stageTitle">שלב 1: התחלה</div>
+        <div id="stageGoal">יעד: 100 נקודות</div>
+        <div class="progress-bar">
+            <div class="progress-fill" id="progressFill" style="width: 0%">
+                <div class="progress-text" id="progressText">0 / 100</div>
+            </div>
+        </div>
     </div>
     
     <div id="legend">
@@ -211,7 +271,7 @@
         </div>
         <div class="info-section">
             <span id="lives">חיים: 3</span>
-            <span id="level">רמה: 1</span>
+            <span id="level">רמה פנימית: 1</span>
         </div>
         <div class="info-section">
             <span id="shield">מגן: 0</span>
@@ -221,29 +281,64 @@
     
     <div id="gameContainer">
         <div id="player">🎯</div>
+        
         <div id="gameOver">
-            <h2>המשחק נגמר!</h2>
-            <p>הניקוד הסופי: <span id="finalScore">0</span></p>
-            <p>רמה גבוהה ביותר: <span id="finalLevel">1</span></p>
-            <p>קומבו מקסימלי: <span id="maxCombo">1</span></p>
-            <button onclick="restartGame()">שחק שוב</button>
+            <h2>נכשלת בשלב!</h2>
+            <p>ניקוד: <span id="failScore">0</span> מתוך <span id="failTarget">0</span></p>
+            <button class="retry-btn" onclick="retryStage()">נסה שוב</button>
+            <button onclick="restartGame()">התחל מחדש</button>
+        </div>
+        
+        <div id="stageComplete">
+            <h2>כל הכבוד! עברת את השלב!</h2>
+            <p>שלב <span id="completedStage">1</span> הושלם בהצלחה!</p>
+            <p>ניקוד השלב: <span id="stageScore">0</span></p>
+            <p>קומבו מקסימלי: <span id="stageMaxCombo">1</span></p>
+            <p>זמן השלב: <span id="stageTime">0</span> שניות</p>
+            <div id="totalStats" style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #666;">
+                <h3>סטטיסטיקות כוללות:</h3>
+                <p>סה"כ נקודות: <span id="totalScore">0</span></p>
+                <p>שלבים שהושלמו: <span id="totalStages">0</span></p>
+                <p>קומבו מקסימלי כולל: <span id="totalMaxCombo">1</span></p>
+            </div>
+            <button onclick="nextStage()">שלב הבא</button>
         </div>
     </div>
 
     <script>
+        let currentStage = 1;
         let score = 0;
         let lives = 3;
-        let level = 1;
+        let internalLevel = 1;
         let gameRunning = true;
         let starSpeed = 2;
-        let spawnRate = 0.025;
-        let bombChance = 0.12;
+        let spawnRate = 0.02;
+        let bombChance = 0.1;
         let combo = 1;
         let comboCount = 0;
         let maxCombo = 1;
+        let stageMaxCombo = 1;
         let shieldTime = 0;
         let speedBoostTime = 0;
         let lastStarType = null;
+        let stageStartTime = Date.now();
+        
+        // סטטיסטיקות כוללות
+        let totalScore = 0;
+        let totalStages = 0;
+        let totalMaxCombo = 1;
+        
+        // הגדרות שלבים
+        const stages = [
+            { target: 100, title: "התחלה", description: "למד את הבסיסים" },
+            { target: 200, title: "מתחמם", description: "יותר מהר ויותר פצצות" },
+            { target: 350, title: "מאתגר", description: "קומבו הוא המפתח" },
+            { target: 500, title: "מתקדם", description: "זמן לפאוור-אפים" },
+            { target: 700, title: "מקצועי", description: "מהירות וזריזות" },
+            { target: 950, title: "מומחה", description: "רק הטובים ביותר" },
+            { target: 1250, title: "אמן כוכבים", description: "כמעט בלתי אפשרי" },
+            { target: 1600, title: "אגדה", description: "האתגר הסופי!" }
+        ];
         
         const gameContainer = document.getElementById('gameContainer');
         const player = document.getElementById('player');
@@ -254,9 +349,11 @@
         const shieldElement = document.getElementById('shield');
         const speedElement = document.getElementById('speed');
         const gameOverDiv = document.getElementById('gameOver');
-        const finalScoreElement = document.getElementById('finalScore');
-        const finalLevelElement = document.getElementById('finalLevel');
-        const maxComboElement = document.getElementById('maxCombo');
+        const stageCompleteDiv = document.getElementById('stageComplete');
+        const stageTitle = document.getElementById('stageTitle');
+        const stageGoal = document.getElementById('stageGoal');
+        const progressFill = document.getElementById('progressFill');
+        const progressText = document.getElementById('progressText');
         
         let mouseX = gameContainer.clientWidth / 2;
         let mouseY = gameContainer.clientHeight / 2;
@@ -271,9 +368,9 @@
         ];
         
         const powerups = [
-            { emoji: '🛡️', type: 'shield', chance: 0.03 },
-            { emoji: '❤️', type: 'life', chance: 0.02 },
-            { emoji: '⚡', type: 'speed', chance: 0.03 }
+            { emoji: '🛡️', type: 'shield', chance: 0.04 },
+            { emoji: '❤️', type: 'life', chance: 0.03 },
+            { emoji: '⚡', type: 'speed', chance: 0.04 }
         ];
         
         // עדכון מיקום השחקן
@@ -284,6 +381,24 @@
             player.style.left = (mouseX - 20) + 'px';
             player.style.top = (mouseY - 20) + 'px';
         });
+        
+        function updateStageInfo() {
+            const stage = stages[currentStage - 1];
+            if (stage) {
+                stageTitle.textContent = `שלב ${currentStage}: ${stage.title}`;
+                stageGoal.textContent = `יעד: ${stage.target} נקודות`;
+                updateProgress();
+            }
+        }
+        
+        function updateProgress() {
+            const stage = stages[currentStage - 1];
+            if (stage) {
+                const progress = Math.min((score / stage.target) * 100, 100);
+                progressFill.style.width = progress + '%';
+                progressText.textContent = `${score} / ${stage.target}`;
+            }
+        }
         
         function getRandomStarType() {
             const random = Math.random();
@@ -330,10 +445,12 @@
                 object.className = 'bomb';
                 object.textContent = '💥';
             } else {
+                // סיכוי גבוה יותר לפאוור-אפים בשלבים מתקדמים
+                const powerupMultiplier = Math.min(currentStage / 3, 2);
                 const powerupCheck = Math.random();
                 const powerup = getRandomPowerup();
                 
-                if (powerup && powerupCheck < 0.1) {
+                if (powerup && powerupCheck < (0.08 * powerupMultiplier)) {
                     objectType = 'powerup';
                     object.className = 'powerup';
                     object.textContent = powerup.emoji;
@@ -360,7 +477,7 @@
                 }
                 
                 const currentTop = parseInt(object.style.top);
-                const fallSpeed = speedBoostTime > 0 ? starSpeed * 0.7 : starSpeed;
+                const fallSpeed = speedBoostTime > 0 ? starSpeed * 0.6 : starSpeed;
                 object.style.top = (currentTop + fallSpeed) + 'px';
                 
                 // בדיקת התנגשות עם השחקן
@@ -407,7 +524,7 @@
                     showFloatingText(x, y, 'אוי!', 'points-text');
                     resetCombo();
                     if (lives <= 0) {
-                        endGame();
+                        endStage(false);
                     }
                 }
             } else if (objectType === 'powerup') {
@@ -416,13 +533,22 @@
                 const points = parseInt(object.dataset.points) * combo;
                 score += points;
                 updateScore();
+                updateProgress();
+                
+                // בדיקה אם השלב הושלם
+                const stage = stages[currentStage - 1];
+                if (score >= stage.target) {
+                    endStage(true);
+                    return;
+                }
                 
                 // עדכון קומבו
                 if (lastStarType === object.dataset.starType) {
                     comboCount++;
-                    if (comboCount >= 3) {
+                    if (comboCount >= 2) {
                         combo = Math.min(combo + 1, 5);
                         maxCombo = Math.max(maxCombo, combo);
+                        stageMaxCombo = Math.max(stageMaxCombo, combo);
                         updateCombo();
                         showFloatingText(x, y, `קומבו x${combo}!`, 'combo-text');
                     }
@@ -435,8 +561,8 @@
                 lastStarType = object.dataset.starType;
                 showFloatingText(x, y, `+${points}`, 'points-text');
                 
-                // העלאת רמה
-                if (score >= level * 200) {
+                // העלאת רמה פנימית
+                if (score >= internalLevel * 100) {
                     levelUp();
                 }
             }
@@ -447,7 +573,7 @@
         function handlePowerup(type, x, y) {
             switch(type) {
                 case 'shield':
-                    shieldTime = 300; // 5 שניות
+                    shieldTime = 360; // 6 שניות
                     player.classList.add('player-shield');
                     showFloatingText(x, y, 'מגן!', 'combo-text');
                     break;
@@ -457,7 +583,7 @@
                     showFloatingText(x, y, 'חיים!', 'combo-text');
                     break;
                 case 'speed':
-                    speedBoostTime = 300;
+                    speedBoostTime = 360; // 6 שניות
                     showFloatingText(x, y, 'מהירות!', 'combo-text');
                     break;
             }
@@ -505,49 +631,99 @@
         }
         
         function levelUp() {
-            level++;
-            starSpeed += 0.3;
-            spawnRate += 0.003;
-            bombChance = Math.min(bombChance + 0.015, 0.25);
-            levelElement.textContent = `רמה: ${level}`;
+            internalLevel++;
+            starSpeed += 0.2;
+            spawnRate += 0.002;
+            bombChance = Math.min(bombChance + 0.01, 0.25);
+            levelElement.textContent = `רמה פנימית: ${internalLevel}`;
         }
         
-        function endGame() {
+        function endStage(completed) {
             gameRunning = false;
-            finalScoreElement.textContent = score;
-            finalLevelElement.textContent = level;
-            maxComboElement.textContent = maxCombo;
-            gameOverDiv.style.display = 'block';
+            
+            if (completed) {
+                // שלב הושלם בהצלחה
+                const stageTime = Math.floor((Date.now() - stageStartTime) / 1000);
+                totalScore += score;
+                totalStages++;
+                totalMaxCombo = Math.max(totalMaxCombo, stageMaxCombo);
+                
+                document.getElementById('completedStage').textContent = currentStage;
+                document.getElementById('stageScore').textContent = score;
+                document.getElementById('stageMaxCombo').textContent = stageMaxCombo;
+                document.getElementById('stageTime').textContent = stageTime;
+                document.getElementById('totalScore').textContent = totalScore;
+                document.getElementById('totalStages').textContent = totalStages;
+                document.getElementById('totalMaxCombo').textContent = totalMaxCombo;
+                
+                stageCompleteDiv.style.display = 'block';
+            } else {
+                // נכשל בשלב
+                const stage = stages[currentStage - 1];
+                document.getElementById('failScore').textContent = score;
+                document.getElementById('failTarget').textContent = stage.target;
+                gameOverDiv.style.display = 'block';
+            }
         }
         
-        function restartGame() {
+        function nextStage() {
+            currentStage++;
+            if (currentStage > stages.length) {
+                alert('מזל טוב! סיימת את כל השלבים! אתה אמן כוכבים אמיתי! 🌟');
+                restartGame();
+                return;
+            }
+            
+            initStage();
+            stageCompleteDiv.style.display = 'none';
+        }
+        
+        function retryStage() {
+            initStage();
+            gameOverDiv.style.display = 'none';
+        }
+        
+        function initStage() {
             score = 0;
             lives = 3;
-            level = 1;
-            starSpeed = 2;
-            spawnRate = 0.025;
-            bombChance = 0.12;
+            internalLevel = 1;
             combo = 1;
             comboCount = 0;
-            maxCombo = 1;
+            stageMaxCombo = 1;
             shieldTime = 0;
             speedBoostTime = 0;
             lastStarType = null;
             gameRunning = true;
+            stageStartTime = Date.now();
             
+            // הגדרות בסיס לפי שלב
+            starSpeed = 1.5 + (currentStage * 0.3);
+            spawnRate = 0.015 + (currentStage * 0.003);
+            bombChance = 0.08 + (currentStage * 0.015);
+            
+            updateStageInfo();
             updateScore();
             updateLives();
             updateCombo();
             updateShield();
             updateSpeed();
-            levelElement.textContent = `רמה: ${level}`;
-            gameOverDiv.style.display = 'none';
+            levelElement.textContent = `רמה פנימית: ${internalLevel}`;
             
             // ניקוי כל האובייקטים
             const objects = gameContainer.querySelectorAll('.star, .bomb, .powerup, .combo-text, .points-text');
             objects.forEach(obj => obj.remove());
             
             gameLoop();
+        }
+        
+        function restartGame() {
+            currentStage = 1;
+            totalScore = 0;
+            totalStages = 0;
+            totalMaxCombo = 1;
+            gameOverDiv.style.display = 'none';
+            stageCompleteDiv.style.display = 'none';
+            initStage();
         }
         
         function gameLoop() {
@@ -575,10 +751,7 @@
         // התחלת המשחק
         player.style.left = (mouseX - 20) + 'px';
         player.style.top = (mouseY - 20) + 'px';
-        updateCombo();
-        updateShield();
-        updateSpeed();
-        gameLoop();
+        initStage();
     </script>
 </body>
 </html>
