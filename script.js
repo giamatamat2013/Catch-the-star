@@ -724,6 +724,7 @@ const BTN = {
     A: 0, B: 1, X: 2, Y: 3,
     LB: 4, RB: 5,
     BACK: 8, START: 9,
+    LS: 10, RS: 11,
     DPAD_UP: 12, DPAD_DOWN: 13, DPAD_LEFT: 14, DPAD_RIGHT: 15
 };
 
@@ -859,8 +860,13 @@ function handleGameplayInput(gp, justPressed) {
 
     if (ax !== 0 || ay !== 0) {
         const rect = gameContainer.getBoundingClientRect();
-        mouseX = Math.max(20, Math.min(rect.width - 20, mouseX + ax * GAMEPAD_SPEED));
-        mouseY = Math.max(20, Math.min(rect.height - 20, mouseY + ay * GAMEPAD_SPEED));
+        let speed = GAMEPAD_SPEED;
+        // B10 (LS - Left Stick press) = 2x speed
+        if (gp.buttons[BTN.LS] && gp.buttons[BTN.LS].pressed) {
+            speed *= 2;
+        }
+        mouseX = Math.max(20, Math.min(rect.width - 20, mouseX + ax * speed));
+        mouseY = Math.max(20, Math.min(rect.height - 20, mouseY + ay * speed));
         player.style.left = (mouseX - 20) + 'px';
         player.style.top = (mouseY - 20) + 'px';
     }
