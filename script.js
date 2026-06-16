@@ -35,6 +35,7 @@ let mouseY = 0;
 let gameLoopRunning = false;
 let lastTimestamp = null;
 let autoSaveIntervalId = null;
+let gamePaused = false;
 const SAVE_KEY = "catchStarsSave_v1";
 
 // ----------------------------
@@ -871,10 +872,9 @@ function handleGameplayInput(gp, justPressed) {
         player.style.top = (mouseY - 20) + 'px';
     }
 
-    // Start / Y = שמירה ידנית
+    // Start / Y = השהיה
     if (justPressed(BTN.START) || justPressed(BTN.Y)) {
-        saveGameState('gamepadSave');
-        showGamepadToast('💾 נשמר');
+        togglePause();
         gamepadVibrate(80, 0.3, 0.3);
     }
 }
@@ -906,13 +906,31 @@ function gamepadLoop() {
 // ----------------------------
 //  התחלה אוטומטית
 // ----------------------------
+function togglePause() {
+    gamePaused = !gamePaused;
+    const pauseBtn = document.getElementById('pauseBtn');
+
+    if (gamePaused) {
+        gameRunning = false;
+        pauseBtn.textContent = '▶️ המשך';
+        pauseBtn.style.background = '#ff9800';
+        saveGameState("pauseSave");
+        showGamepadToast('⏸️ משחק מושהה');
+    } else {
+        gameRunning = true;
+        pauseBtn.textContent = '⏸️ השהה';
+        pauseBtn.style.background = '';
+        lastTimestamp = null;
+        requestAnimationFrame(gameLoop);
+        showGamepadToast('▶️ משחק חוזר');
+    }
+}
+
 window.addEventListener('load', () => {
     if (!loadGameState()) {
         initStage();
     }
-    document.getElementById('saveBtn').addEventListener('click', () => {
-        saveGameState("manualSave");
-    });
+    document.getElementById('pauseBtn').addEventListener('click', togglePause);
     autoSaveIntervalId = setInterval(() => {
         if (gameRunning) saveGameState("autosave");
     }, 30000);
